@@ -1,7 +1,9 @@
+// Must be the first import: ES modules run imports before this file's code, and the
+// database pool reads process.env when it is imported.
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import { requireAuth, optionalAuth, AuthRequest, sessionToken } from './src/middleware/auth.ts';
 import {
   AuthError,
@@ -28,8 +30,6 @@ import {
   listCommunityValidations,
   addCommunityValidation,
 } from './src/db/cociflexRepo.ts';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -4,6 +4,8 @@
 
 Pensada para estudiantes foráneos, profesionales y cocineros caseros.
 
+> **¿Vas a colaborar?** Lee primero la [Guía del equipo](GUIA_EQUIPO.md): cómo hacer commits sin romper el sistema y cómo actualizar el servidor.
+
 ## Funciones
 
 La aplicación se organiza en cinco pestañas:
