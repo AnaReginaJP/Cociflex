@@ -9,3 +9,7 @@ coverage/
 .aistudio/
 release/
 cociflex-release.tar.gz
+
+# Guía interna del equipo: se comparte en privado, no va en el repositorio
+GUIA_EQUIPO*
+Guia-equipo*
