@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function() {
+        try {
+          var targetWindow = typeof window !== 'undefined' ? window : null;
+          if (!targetWindow) return;
+          var nativeFetch = targetWindow.fetch;
+          var customFetch = nativeFetch ? nativeFetch.bind(targetWindow) : null;
+
+          // Provide getter and setter on Window.prototype so any extension
+          // doing `window.fetch = ...` never throws "only has a getter" TypeError
+          var winProto = typeof Window !== 'undefined' ? Window.prototype : null;
+          if (winProto) {
+            try {
+              Object.defineProperty(winProto, 'fetch', {
+                get: function() {
+                  return customFetch || nativeFetch;
+                },
+                set: function(fn) {
+                  customFetch = fn;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            } catch (e1) {}
+          }
+
+          // Also define getter/setter directly on window instance
+          try {
+            Object.defineProperty(targetWindow, 'fetch', {
+              get: function() {
+                return customFetch || nativeFetch;
+              },
+              set: function(fn) {
+                customFetch = fn;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e2) {}
+        } catch (e) {}
+      })();
+    </script>
+    <title>CociFlex — Asistente Digital e Innovación Culinaria</title>
+    <meta name="description" content="Generador inteligente de recetas con ingredientes en casa, guías bioartesanales de fermentación con rigor científico y comunidad colaborativa de cocina." />
+    <meta property="og:title" content="CociFlex — Asistente Digital e Innovación Culinaria" />
+    <meta property="og:description" content="Generador inteligente de recetas con ingredientes en casa, guías bioartesanales de fermentación con rigor científico y comunidad colaborativa de cocina." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#FFF8F6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cociflex" />
+    <link rel="icon" type="image/png" href="/assets/aistudio/logo_89042ff1.png" />
+    <link rel="apple-touch-icon" href="/assets/aistudio/logo_89042ff1.png" />
+    <link rel="manifest" href="/manifest.json" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

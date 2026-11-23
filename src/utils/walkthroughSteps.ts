@@ -1,0 +1,111 @@
+export type WorkspaceTab = 'inicio' | 'cocina' | 'fermentos' | 'comunidad' | 'mandado';
+
+export interface WalkthroughStep {
+  id: string;
+  stepNumber: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  actionTip: string;
+  targetTab: WorkspaceTab;
+  targetSelector: string;
+}
+
+export const WALKTHROUGH_STORAGE_KEY = 'cociflex_walkthrough_completed_v1';
+
+export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
+  {
+    id: 'explore-home',
+    stepNumber: 1,
+    title: 'Explora recetas con lo que ya tienes',
+    subtitle: 'Inicio y Buscador Inteligente',
+    description:
+      'Aquí ves el catálogo de recetas caseras listas para preparar. Filtra por categoría (Rápidas, Postres, Vegetarianas) o busca un ingrediente que quieras rescatar hoy.',
+    actionTip: 'Prueba buscar "tortillas" o haz clic en cualquier tarjeta para abrir el Modo Cocina.',
+    targetTab: 'inicio',
+    targetSelector: '[data-tour="home-search"]',
+  },
+  {
+    id: 'pantry-matcher',
+    stepNumber: 2,
+    title: 'Marca tu alacena y calcula coincidencias',
+    subtitle: 'Mi Cocina — Motor Cero Desperdicio',
+    description:
+      'Selecciona los ingredientes disponibles en tu refrigerador. CociFlex ordena automáticamente las recetas según tu porcentaje de coincidencia y te indica qué te falta.',
+    actionTip: 'Activa o agrega ingredientes de tu casa y pulsa "+" en faltantes para mandarlos a tu lista.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="pantry-engine"]',
+  },
+  {
+    id: 'ai-recipe-studio',
+    stepNumber: 3,
+    title: 'Crea una receta original con IA',
+    subtitle: 'Generador Culinario Personalizado',
+    description:
+      '¿Tus ingredientes no coinciden con una receta clásica? Usa "Crear con IA" para inventar un platillo a medida respetando tu tiempo, porciones y dieta.',
+    actionTip: 'Presiona el botón "Crear Receta con IA" cuando quieras improvisar sin desperdiciar comida.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="ai-cta"]',
+  },
+  {
+    id: 'local-ai-ferments',
+    stepNumber: 4,
+    title: 'Fermenta con ciencia e IA local privada',
+    subtitle: 'Fermentos y BioAsistente',
+    description:
+      'Ajusta tiempos de fermentación según el clima de tu cocina, consulta el glosario para principiantes y verifica la seguridad (pH y temperatura) con tu simulador.',
+    actionTip: 'Mueve la temperatura ambiente en el BioAsistente o prueba el Simulador de Inocuidad.',
+    targetTab: 'fermentos',
+    targetSelector: '[data-tour="ferment-assistant"]',
+  },
+  {
+    id: 'community-and-mandado',
+    stepNumber: 5,
+    title: 'Valida recetas en comunidad y arma tu mandado',
+    subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
+    description:
+      'En Comunidad las recetas requieren 3 validaciones reales antes de certificarse. En Mandado se agrupan automáticamente los insumos que te faltaron al cocinar.',
+    actionTip: 'Puedes repetir esta guía cuando quieras desde el botón "Guía Interactiva" en la barra superior.',
+    targetTab: 'comunidad',
+    targetSelector: '[data-tour="community-mandado"]',
+  },
+];
+
+export function clampWalkthroughIndex(index: number, total: number = WALKTHROUGH_STEPS.length): number {
+  if (total <= 0) return 0;
+  if (Number.isNaN(index)) return 0;
+  return Math.max(0, Math.min(total - 1, Math.trunc(index)));
+}
+
+export function getNextWalkthroughIndex(currentIndex: number, total: number = WALKTHROUGH_STEPS.length): number {
+  return clampWalkthroughIndex(currentIndex + 1, total);
+}
+
+export function getPrevWalkthroughIndex(currentIndex: number, total: number = WALKTHROUGH_STEPS.length): number {
+  return clampWalkthroughIndex(currentIndex - 1, total);
+}
+
+export function getWalkthroughProgressPercent(currentIndex: number, total: number = WALKTHROUGH_STEPS.length): number {
+  if (total <= 0) return 0;
+  const clamped = clampWalkthroughIndex(currentIndex, total);
+  return Math.round(((clamped + 1) / total) * 100);
+}
+
+export function shouldAutoStartWalkthrough(search: string, storedCompletionValue: string | null): boolean {
+  const normalizedSearch = (search || '').toLowerCase();
+  if (
+    normalizedSearch.includes('walkthrough=1') ||
+    normalizedSearch.includes('autostart=1') ||
+    normalizedSearch.includes('tour=1')
+  ) {
+    return true;
+  }
+  if (
+    normalizedSearch.includes('walkthrough=0') ||
+    normalizedSearch.includes('autostart=0') ||
+    normalizedSearch.includes('tour=0')
+  ) {
+    return false;
+  }
+  return storedCompletionValue !== 'true';
+}

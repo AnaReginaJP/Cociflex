@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "CociFlex — Asistente Digital e Innovación Culinaria",
+  "short_name": "CociFlex",
+  "description": "Generador inteligente de recetas con ingredientes en casa, fermentación bioartesanal y comunidad.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF8F6",
+  "theme_color": "#FF7262",
+  "categories": ["food", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/assets/aistudio/logo_89042ff1.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

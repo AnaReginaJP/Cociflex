@@ -1,0 +1,6 @@
+{
+  "name": "CociFlex — Asistente Digital e Innovación Culinaria",
+  "description": "Generador inteligente de recetas con ingredientes en casa, guías bioartesanales de fermentación con rigor científico y comunidad colaborativa de cocina.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
