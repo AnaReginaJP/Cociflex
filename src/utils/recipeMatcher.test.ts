@@ -7,9 +7,8 @@ import {
   getRankedRecipes,
   scaleIngredientAmount,
   validateFermentationSafety,
-  Recipe,
-  FermentationGuide,
 } from './recipeMatcher.ts';
+import type { Recipe, FermentationGuide } from './recipeMatcher.ts';
 
 const dummyRecipe: Recipe = {
   id: 'test-1',
