@@ -9,6 +9,8 @@ import {
   AlertCircle,
   History,
   Trash2,
+  Mail,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 
@@ -65,7 +67,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onOpenHistoryRecipe,
   onDeleteHistoryEntry,
 }) => {
-  const { firebaseUser, isSigningIn, authError, signInWithGoogle, logout } = useAuth();
+  const { user, isSigningIn, authError, login, register, logout, clearAuthError } = useAuth();
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
   const [name, setName] = useState(userProfile.name || '');
   const [selectedDiet, setSelectedDiet] = useState<string>(
     userProfile.dietaryPreference || 'Omnívoro'
@@ -73,18 +79,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
-    setName(userProfile.name || firebaseUser?.displayName || '');
+    setName(userProfile.name || user?.displayName || '');
     if (userProfile.dietaryPreference) {
       setSelectedDiet(userProfile.dietaryPreference);
     }
-  }, [userProfile, firebaseUser]);
+  }, [userProfile, user]);
 
   if (!isOpen) return null;
 
-  const isSignedInWithGoogle = Boolean(firebaseUser);
+  const isSignedIn = Boolean(user);
 
-  const handleGoogleLogin = async () => {
-    await signInWithGoogle();
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ok =
+      authMode === 'register'
+        ? await register(authName.trim(), authEmail.trim(), authPassword)
+        : await login(authEmail.trim(), authPassword);
+    if (ok) setAuthPassword('');
+  };
+
+  const switchAuthMode = () => {
+    setAuthMode((mode) => (mode === 'login' ? 'register' : 'login'));
+    clearAuthError();
   };
 
   const handleLogout = async () => {
@@ -105,12 +121,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const updatedProfile: UserProfileData = {
       name:
         name.trim() ||
-        firebaseUser?.displayName ||
-        firebaseUser?.email?.split('@')[0] ||
+        user?.displayName ||
+        user?.email?.split('@')[0] ||
         'Cocinero CociFlex',
-      email: firebaseUser?.email || userProfile.email || '',
+      email: user?.email || userProfile.email || '',
       dietaryPreference: selectedDiet,
-      isLoggedIn: isSignedInWithGoogle || userProfile.isLoggedIn,
+      isLoggedIn: isSignedIn,
     };
 
     onSaveProfile(updatedProfile);
@@ -145,25 +161,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             Cociflex
           </h2>
           <p className="text-xs text-[#7D6F76] font-medium mt-0.5">
-            {isSignedInWithGoogle
+            {isSignedIn
               ? 'Tu Perfil y Preferencias Culinarias'
-              : 'Personaliza tu dieta o conecta tu cuenta Google'}
+              : 'Personaliza tu dieta o entra a tu cuenta CociFlex'}
           </p>
         </div>
 
         {/* Account Status Card */}
-        {isSignedInWithGoogle && firebaseUser ? (
+        {isSignedIn && user ? (
           <div className="mb-4 p-3.5 rounded-2xl bg-[#FFEFEA] border border-[#FED7CD] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-10 h-10 rounded-full bg-[#FF7262] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                {(name || firebaseUser.displayName || firebaseUser.email || 'U')[0].toUpperCase()}
+                {(name || user.displayName || user.email || 'U')[0].toUpperCase()}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[#33252A] leading-tight truncate">
-                  {name || firebaseUser.displayName || 'Cocinero'}
+                  {name || user.displayName || 'Cocinero'}
                 </p>
                 <p className="text-[11px] text-[#7D6F76] truncate">
-                  {firebaseUser.email}
+                  {user.email}
                 </p>
                 <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E8F8F0] text-[#1E7E50] border border-[#C6F0DC]">
                   {selectedDiet}
@@ -181,27 +197,70 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </button>
           </div>
         ) : (
-          <div className="mb-4 p-3.5 rounded-2xl bg-white border border-[#FED7CD] space-y-2.5">
+          <form
+            onSubmit={handleAuthSubmit}
+            className="mb-4 p-3.5 rounded-2xl bg-white border border-[#FED7CD] space-y-2.5"
+          >
             <p className="text-xs text-[#5C4A51] leading-relaxed">
-              Inicia sesión con Google para guardar tu alacena, lista de mandado, recetas creadas con IA y validaciones entre sesiones.
+              {authMode === 'login'
+                ? 'Entra a tu cuenta para guardar tu alacena, lista de mandado, recetas creadas con IA e historial.'
+                : 'Crea tu cuenta CociFlex. Tus datos se guardan en el servidor de CociFlex.'}
             </p>
+
+            {authMode === 'register' && (
+              <div className="relative">
+                <User className="w-4 h-4 text-[#A6979D] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="Tu nombre (opcional)"
+                  autoComplete="name"
+                  maxLength={80}
+                  className="w-full bg-white border border-[#FED7CD] focus:border-[#FF7262] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#33252A] placeholder-[#B5A7AC] focus:outline-none transition-colors"
+                />
+              </div>
+            )}
+            <div className="relative">
+              <Mail className="w-4 h-4 text-[#A6979D] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Correo electrónico"
+                autoComplete="email"
+                className="w-full bg-white border border-[#FED7CD] focus:border-[#FF7262] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#33252A] placeholder-[#B5A7AC] focus:outline-none transition-colors"
+              />
+            </div>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-[#A6979D] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                required
+                minLength={authMode === 'register' ? 8 : undefined}
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder={authMode === 'register' ? 'Contraseña (mínimo 8 caracteres)' : 'Contraseña'}
+                autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
+                className="w-full bg-white border border-[#FED7CD] focus:border-[#FF7262] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#33252A] placeholder-[#B5A7AC] focus:outline-none transition-colors"
+              />
+            </div>
+
             <button
-              type="button"
-              onClick={handleGoogleLogin}
+              type="submit"
               disabled={isSigningIn}
-              className="cursor-pointer w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-[#FFF0EB] border border-[#FED7CD] hover:border-[#FF8A80] text-[#33252A] text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-60"
+              className="cursor-pointer w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#FF7B72] to-[#FA7268] hover:brightness-105 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-60"
             >
               {isSigningIn ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#FF7262]" />
-                  <span>Conectando con Google...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{authMode === 'login' ? 'Entrando...' : 'Creando cuenta...'}</span>
                 </>
               ) : (
                 <>
-                  <span className="w-4 h-4 rounded-full bg-[#FFEFEA] text-[#FF7262] font-black text-[11px] flex items-center justify-center">
-                    G
-                  </span>
-                  <span>Continuar con Google</span>
+                  <span>{authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</span>
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
@@ -212,7 +271,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <span>{authError}</span>
               </p>
             )}
-          </div>
+
+            <button
+              type="button"
+              onClick={switchAuthMode}
+              className="cursor-pointer w-full text-center text-[11px] font-semibold text-[#FF7262] hover:underline"
+            >
+              {authMode === 'login' ? '¿No tienes cuenta? Crea una' : '¿Ya tienes cuenta? Inicia sesión'}
+            </button>
+          </form>
         )}
 
         {/* Profile & Dietary Form */}
@@ -300,7 +367,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </button>
           </div>
 
-          {isSignedInWithGoogle && (
+          {isSignedIn && (
             <div className="pt-3 border-t border-[#FED7CD]/60">
               <div className="flex items-center gap-1.5 mb-2">
                 <History className="w-4 h-4 text-[#FF7262]" />

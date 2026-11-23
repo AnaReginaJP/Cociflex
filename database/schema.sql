@@ -68,6 +68,7 @@ CREATE TABLE `users` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`uid` varchar(128) NOT NULL,
 	`email` varchar(255) NOT NULL,
+	`password_hash` varchar(255),
 	`display_name` varchar(120) NOT NULL DEFAULT '',
 	`dietary_preference` varchar(40) NOT NULL DEFAULT 'Omnívoro',
 	`walkthrough_completed` boolean NOT NULL DEFAULT false,
@@ -75,12 +76,23 @@ CREATE TABLE `users` (
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	`last_login_at` timestamp,
 	CONSTRAINT `users_id` PRIMARY KEY(`id`),
-	CONSTRAINT `users_uid_unique` UNIQUE(`uid`)
+	CONSTRAINT `users_uid_unique` UNIQUE(`uid`),
+	CONSTRAINT `users_email_unique` UNIQUE(`email`)
+);
+
+CREATE TABLE `sessions` (
+	`id` varchar(64) NOT NULL,
+	`user_id` int NOT NULL,
+	`expires_at` timestamp NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `sessions_id` PRIMARY KEY(`id`)
 );
 
 ALTER TABLE `pantry_items` ADD CONSTRAINT `pantry_items_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;
 ALTER TABLE `recipe_history` ADD CONSTRAINT `recipe_history_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;
 ALTER TABLE `saved_recipes` ADD CONSTRAINT `saved_recipes_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;
 ALTER TABLE `shopping_items` ADD CONSTRAINT `shopping_items_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;
+ALTER TABLE `sessions` ADD CONSTRAINT `sessions_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;
+CREATE INDEX `sessions_user_idx` ON `sessions` (`user_id`);
 CREATE INDEX `recipe_history_user_idx` ON `recipe_history` (`user_id`,`created_at`);
 CREATE INDEX `saved_recipes_user_idx` ON `saved_recipes` (`user_id`,`created_at`);

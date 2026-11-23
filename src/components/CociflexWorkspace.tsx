@@ -865,7 +865,7 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                     className="cursor-pointer w-full py-3 px-4 rounded-2xl font-extrabold text-xs sm:text-sm text-white bg-gradient-to-r from-[#FF7B72] to-[#FA7268] hover:brightness-105 flex items-center justify-center gap-2 shadow-md shadow-[#FF7B72]/25 transition-all"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Crear Receta con IA (Gemini 3.8)</span>
+                    <span>Crear Receta con IA</span>
                   </button>
                 </div>
               </section>

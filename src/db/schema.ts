@@ -22,7 +22,9 @@ const jsonText = <T>() =>
 export const users = mysqlTable('users', {
   id: int('id').autoincrement().primaryKey(),
   uid: varchar('uid', { length: 128 }).notNull().unique(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  // scrypt hash ("scrypt$salt$hash"); local accounts only, no external login provider.
+  passwordHash: varchar('password_hash', { length: 255 }),
   displayName: varchar('display_name', { length: 120 }).notNull().default(''),
   dietaryPreference: varchar('dietary_preference', { length: 40 }).notNull().default('Omnívoro'),
   walkthroughCompleted: boolean('walkthrough_completed').notNull().default(false),
@@ -30,6 +32,20 @@ export const users = mysqlTable('users', {
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
   lastLoginAt: timestamp('last_login_at'),
 });
+
+// Login sessions: the browser keeps a random token in an HttpOnly cookie; only its SHA-256 is stored.
+export const sessions = mysqlTable(
+  'sessions',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    userId: int('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('sessions_user_idx').on(table.userId)]
+);
 
 export const pantryItems = mysqlTable(
   'pantry_items',

@@ -22,7 +22,6 @@ interface AiRecipeModalProps {
   initialServings: number;
   initialPreference: string;
   onGeneratedSuccess: (recipe: Recipe) => void;
-  getAuthToken?: () => Promise<string | null>;
 }
 
 export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
@@ -33,7 +32,6 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
   initialServings,
   initialPreference,
   onGeneratedSuccess,
-  getAuthToken,
 }) => {
   const [time, setTime] = useState(initialTime || 25);
   const [servings, setServings] = useState(initialServings || 2);
@@ -50,14 +48,11 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
     setErrorMsg(null);
 
     try {
-      // The token (when signed in) lets the server save this request in the user's history.
-      const token = getAuthToken ? await getAuthToken() : null;
+      // The session cookie (when signed in) lets the server save this request in the user's history.
       const response = await fetch('/api/generate-recipe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ingredients,
           timeAvailable: time,
@@ -94,7 +89,7 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#FF7262]" />
             <h3 className="text-xs font-black text-[#33252A] uppercase tracking-wider">
-              Generar Receta con IA (Gemini 3.8 Flash)
+              Generar Receta con IA
             </h3>
           </div>
           <button
@@ -200,7 +195,7 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Creando receta personalizada...</span>
+                  <span>Creando receta (la IA local puede tardar varios minutos)...</span>
                 </>
               ) : (
                 <>

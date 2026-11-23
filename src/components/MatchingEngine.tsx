@@ -236,7 +236,7 @@ export const MatchingEngine: React.FC<MatchingEngineProps> = ({
               className="cursor-pointer w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 hover:brightness-110 shadow-lg shadow-pink-950 flex items-center justify-center gap-2 transition-all"
             >
               <Sparkles className="w-4 h-4 text-amber-200" />
-              <span>Generar Nueva Receta con IA (Gemini 3.8)</span>
+              <span>Generar Nueva Receta con IA</span>
             </button>
 
             <button

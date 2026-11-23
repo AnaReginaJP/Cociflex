@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 .aistudio/
+release/
+cociflex-release.tar.gz
