@@ -3,13 +3,16 @@ import { GoogleGenAI, Type } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
+import { requireAuth, optionalAuth, AuthRequest } from './src/middleware/auth.ts';
 import {
   getUserFullState,
   updateUserPreferences,
   replaceUserPantry,
   replaceUserShoppingList,
   saveUserAiRecipe,
+  recordRecipeGeneration,
+  listRecipeHistory,
+  deleteRecipeHistoryEntry,
   listCommunityValidations,
   addCommunityValidation,
 } from './src/db/cociflexRepo.ts';
@@ -42,6 +45,8 @@ const port = resolvePort();
 
 app.use(express.json());
 
+const AI_MODEL = 'gemini-3.8-flash';
+
 // Initialize Google GenAI client server-side
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = apiKey
@@ -55,7 +60,7 @@ const ai = apiKey
     })
   : null;
 
-// ================= AUTHENTICATED CLOUD SQL USER ENDPOINTS =================
+// ================= AUTHENTICATED USER ENDPOINTS (MariaDB) =================
 
 app.get('/api/me/state', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
@@ -181,6 +186,46 @@ app.post('/api/me/recipes', requireAuth, async (req: AuthRequest, res: Response)
   }
 });
 
+app.get('/api/me/history', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = req.user?.uid;
+    const email = req.user?.email || '';
+    if (!uid) {
+      return res.status(401).json({ error: 'Sesión inválida.' });
+    }
+
+    const limit = Number(req.query.limit) || 50;
+    const history = await listRecipeHistory(uid, email, limit);
+    return res.json({ recipeHistory: history });
+  } catch (error: any) {
+    console.error('Failed to load recipe history:', error);
+    return res.status(500).json({ error: error?.message || 'Error al cargar el historial.' });
+  }
+});
+
+app.delete('/api/me/history/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const uid = req.user?.uid;
+    const email = req.user?.email || '';
+    if (!uid) {
+      return res.status(401).json({ error: 'Sesión inválida.' });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Identificador inválido.' });
+    }
+
+    const deleted = await deleteRecipeHistoryEntry(uid, email, id);
+    return deleted
+      ? res.json({ deleted: true })
+      : res.status(404).json({ error: 'No se encontró esa entrada del historial.' });
+  } catch (error: any) {
+    console.error('Failed to delete history entry:', error);
+    return res.status(500).json({ error: error?.message || 'Error al borrar del historial.' });
+  }
+});
+
 // ================= COMMUNITY VALIDATION ENDPOINTS =================
 
 app.get('/api/community/validations', async (_req: Request, res: Response) => {
@@ -223,7 +268,11 @@ app.post('/api/community/validate', requireAuth, async (req: AuthRequest, res: R
 
 // ================= AI RECIPE GENERATION ENDPOINT =================
 
-app.post('/api/generate-recipe', async (req: Request, res: Response) => {
+app.post('/api/generate-recipe', optionalAuth, async (req: AuthRequest, res: Response) => {
+  const startedAt = Date.now();
+  // Saves the request in the user's history (signed-in users only); never breaks the response.
+  let record: (status: 'ok' | 'fallback' | 'error', recipe?: Record<string, unknown> | null, errorMessage?: string) => void = () => {};
+
   try {
     const { ingredients, timeAvailable, servings, preference, extraNotes } = req.body;
 
@@ -231,10 +280,29 @@ app.post('/api/generate-recipe', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Debes proporcionar al menos un ingrediente disponible.' });
     }
 
+    const uid = req.user?.uid;
+    if (uid) {
+      record = (status, recipe, errorMessage) => {
+        recordRecipeGeneration(uid, req.user?.email || '', {
+          ingredients: ingredients.map(String),
+          timeAvailable: Number(timeAvailable) || 30,
+          servings: Number(servings) || 2,
+          preference: String(preference || 'Tradicional Mexicana'),
+          extraNotes: typeof extraNotes === 'string' ? extraNotes : undefined,
+          status,
+          model: status === 'fallback' ? 'respaldo-local' : AI_MODEL,
+          recipe,
+          errorMessage,
+          durationMs: Date.now() - startedAt,
+        }).catch(() => {
+          // Already logged by the repository.
+        });
+      };
+    }
+
     if (!ai) {
       const primary = ingredients.slice(0, 3).join(', ');
-      return res.json({
-        recipe: {
+      const fallbackRecipe = {
           title: `Guisado Creativo CociFlex de ${ingredients[0] || 'la Casa'}`,
           category: preference || 'Tradicional Mexicana',
           mealType: 'Comida',
@@ -274,8 +342,9 @@ app.post('/api/generate-recipe', async (req: Request, res: Response) => {
           ],
           wasteReductionTip: 'Aprovecha las sobras enfriadas en un recipiente hermético; se conservan perfecto por 3 días o como relleno para quesadillas.',
           caloriesApprox: 380,
-        },
-      });
+      };
+      record('fallback', fallbackRecipe);
+      return res.json({ recipe: fallbackRecipe });
     }
 
     const prompt = `Actúa como CociFlex, un chef profesional especializado en gastronomía mexicana casera y sostenibilidad alimentaria (cero desperdicio).
@@ -293,7 +362,7 @@ Reglas:
 - Pasos numerados con tiempo de cocción e indicación clara.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: AI_MODEL,
       contents: prompt,
       config: {
         systemInstruction: 'Eres CociFlex, el asistente culinario inteligente enfocado en reducir el desperdicio de alimentos y crear platillos con rigor y sabor.',
@@ -357,9 +426,11 @@ Reglas:
     });
 
     const parsed = JSON.parse(response.text || '{}');
+    record('ok', parsed);
     return res.json({ recipe: parsed });
   } catch (error: any) {
     console.error('Error generating recipe with Gemini:', error);
+    record('error', null, error?.message || 'Error desconocido');
     return res.status(500).json({
       error: 'Hubo un error al generar la receta con IA. Por favor intenta de nuevo.',
       details: error?.message || 'Error desconocido',

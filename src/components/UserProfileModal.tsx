@@ -7,6 +7,8 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
+  History,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 
@@ -18,12 +20,32 @@ export interface UserProfileData {
   isLoggedIn: boolean;
 }
 
+export interface RecipeHistoryEntry {
+  id: number;
+  createdAt: string;
+  status: 'ok' | 'fallback' | 'error';
+  ingredients: string[];
+  servings: number;
+  preference: string;
+  recipeTitle: string | null;
+  recipe: Record<string, unknown> | null;
+}
+
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   userProfile: UserProfileData;
   onSaveProfile: (profile: UserProfileData) => void;
+  recipeHistory?: RecipeHistoryEntry[];
+  onOpenHistoryRecipe?: (entry: RecipeHistoryEntry) => void;
+  onDeleteHistoryEntry?: (id: number) => void;
 }
+
+const HISTORY_STATUS_LABEL: Record<RecipeHistoryEntry['status'], string> = {
+  ok: 'Receta con IA',
+  fallback: 'Receta de respaldo',
+  error: 'No se pudo generar',
+};
 
 export const DIETARY_OPTIONS = [
   { id: 'Omnívoro', label: 'Omnívoro / Tradicional', icon: '🍳', desc: 'Come de todo sin restricciones' },
@@ -39,6 +61,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   userProfile,
   onSaveProfile,
+  recipeHistory = [],
+  onOpenHistoryRecipe,
+  onDeleteHistoryEntry,
 }) => {
   const { firebaseUser, isSigningIn, authError, signInWithGoogle, logout } = useAuth();
   const [name, setName] = useState(userProfile.name || '');
@@ -274,6 +299,69 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               )}
             </button>
           </div>
+
+          {isSignedInWithGoogle && (
+            <div className="pt-3 border-t border-[#FED7CD]/60">
+              <div className="flex items-center gap-1.5 mb-2">
+                <History className="w-4 h-4 text-[#FF7262]" />
+                <span className="text-[11px] font-bold text-[#5C4A51] uppercase">
+                  Historial de recetas con IA
+                </span>
+              </div>
+
+              {recipeHistory.length === 0 ? (
+                <p className="text-[11px] text-[#7D6F76]">
+                  Aún no has generado recetas. Las que crees con IA aparecerán aquí.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {recipeHistory.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="p-2.5 rounded-2xl bg-white border border-[#FED7CD]/80 flex items-start justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#33252A] truncate">
+                          {entry.recipeTitle || 'Sin receta'}
+                        </p>
+                        <p className="text-[10px] text-[#A6979D]">
+                          {HISTORY_STATUS_LABEL[entry.status]} ·{' '}
+                          {new Date(entry.createdAt).toLocaleString('es-MX', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </p>
+                        <p className="text-[11px] text-[#7D6F76] line-clamp-1">
+                          {entry.ingredients.join(', ')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {entry.recipe && onOpenHistoryRecipe && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenHistoryRecipe(entry)}
+                            className="cursor-pointer px-2 py-1 rounded-full bg-[#FFEFEA] text-[#FF7262] text-[10px] font-bold hover:bg-[#FED7CD]"
+                          >
+                            Ver
+                          </button>
+                        )}
+                        {onDeleteHistoryEntry && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteHistoryEntry(entry.id)}
+                            className="cursor-pointer p-1.5 rounded-full text-[#A6979D] hover:text-[#E11D48] hover:bg-[#FFF2EE]"
+                            aria-label="Borrar del historial"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </form>
 
         <div className="pt-3 border-t border-[#FED7CD]/60 text-center">

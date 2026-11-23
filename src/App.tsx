@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { RecipeModal } from './components/RecipeModal.tsx';
 import { AiRecipeModal } from './components/AiRecipeModal.tsx';
-import { UserProfileModal, UserProfileData } from './components/UserProfileModal.tsx';
+import { UserProfileModal, UserProfileData, type RecipeHistoryEntry } from './components/UserProfileModal.tsx';
 import { CociflexWorkspace } from './components/CociflexWorkspace.tsx';
 import { WalkthroughTour } from './components/WalkthroughTour.tsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import { Recipe } from './utils/recipeMatcher.ts';
+import { buildRecipeFromAi } from './utils/aiRecipe.ts';
 import { COMMON_PANTRY_INGREDIENTS } from './data/recipesData.ts';
 import {
   WALKTHROUGH_STORAGE_KEY,
@@ -61,6 +62,7 @@ const CociflexAppContent: React.FC = () => {
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>(DEFAULT_PANTRY);
   const [shoppingList, setShoppingList] = useState<string[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [recipeHistory, setRecipeHistory] = useState<RecipeHistoryEntry[]>([]);
   const [communityExtraValidations, setCommunityExtraValidations] = useState<
     Record<string, string[]>
   >({});
@@ -130,6 +132,9 @@ const CociflexAppContent: React.FC = () => {
         }
         if (Array.isArray(data.savedRecipes)) {
           setSavedRecipes(data.savedRecipes);
+        }
+        if (Array.isArray(data.recipeHistory)) {
+          setRecipeHistory(data.recipeHistory);
         }
         if (data.user.walkthroughCompleted) {
           try {
@@ -293,11 +298,52 @@ const CociflexAppContent: React.FC = () => {
     setIsAiModalOpen(true);
   };
 
+  const refreshRecipeHistory = useCallback(async () => {
+    const token = await getFreshToken();
+    if (!token) return;
+    try {
+      const res = await fetch('/api/me/history', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.recipeHistory)) setRecipeHistory(data.recipeHistory);
+    } catch {
+      // Keep the history already on screen
+    }
+  }, [getFreshToken]);
+
   const handleGeneratedRecipeSuccess = (recipe: Recipe) => {
     setIsAiModalOpen(false);
     setSavedRecipes((prev) => [recipe, ...prev]);
     setActiveRecipe(recipe);
-    syncWithAuth('/api/me/recipes', 'POST', { recipe });
+    syncWithAuth('/api/me/recipes', 'POST', { recipe }).then(() => refreshRecipeHistory());
+  };
+
+  const handleOpenHistoryRecipe = (entry: RecipeHistoryEntry) => {
+    if (!entry.recipe) return;
+    setIsProfileModalOpen(false);
+    setActiveRecipe(
+      buildRecipeFromAi(
+        entry.recipe,
+        { preference: entry.preference, servings: entry.servings },
+        `history-${entry.id}`
+      )
+    );
+  };
+
+  const handleDeleteHistoryEntry = async (id: number) => {
+    setRecipeHistory((prev) => prev.filter((entry) => entry.id !== id));
+    const token = await getFreshToken();
+    if (!token) return;
+    try {
+      await fetch(`/api/me/history/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      refreshRecipeHistory();
+    }
   };
 
   return (
@@ -347,6 +393,7 @@ const CociflexAppContent: React.FC = () => {
           initialServings={aiServings}
           initialPreference={aiPreference}
           onGeneratedSuccess={handleGeneratedRecipeSuccess}
+          getAuthToken={getFreshToken}
         />
       )}
 
@@ -356,6 +403,9 @@ const CociflexAppContent: React.FC = () => {
           onClose={() => setIsProfileModalOpen(false)}
           userProfile={userProfile}
           onSaveProfile={handleSaveProfile}
+          recipeHistory={recipeHistory}
+          onOpenHistoryRecipe={handleOpenHistoryRecipe}
+          onDeleteHistoryEntry={handleDeleteHistoryEntry}
         />
       )}
     </div>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { GENERATED_IMAGES } from '../data/generatedImages.ts';
 import { 
   Sparkles, 
   X, 
@@ -13,6 +12,7 @@ import {
   Loader2 
 } from 'lucide-react';
 import { Recipe } from '../utils/recipeMatcher.ts';
+import { buildRecipeFromAi } from '../utils/aiRecipe.ts';
 
 interface AiRecipeModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ interface AiRecipeModalProps {
   initialServings: number;
   initialPreference: string;
   onGeneratedSuccess: (recipe: Recipe) => void;
+  getAuthToken?: () => Promise<string | null>;
 }
 
 export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
@@ -32,6 +33,7 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
   initialServings,
   initialPreference,
   onGeneratedSuccess,
+  getAuthToken,
 }) => {
   const [time, setTime] = useState(initialTime || 25);
   const [servings, setServings] = useState(initialServings || 2);
@@ -48,9 +50,14 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
     setErrorMsg(null);
 
     try {
+      // The token (when signed in) lets the server save this request in the user's history.
+      const token = getAuthToken ? await getAuthToken() : null;
       const response = await fetch('/api/generate-recipe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           ingredients,
           timeAvailable: time,
@@ -67,26 +74,7 @@ export const AiRecipeModal: React.FC<AiRecipeModalProps> = ({
       }
 
       if (data.recipe) {
-        const fullRecipe: Recipe = {
-          id: `ai-gen-${Date.now()}`,
-          title: data.recipe.title,
-          category: data.recipe.category || preference,
-          mealType: data.recipe.mealType || 'Comida',
-          description: data.recipe.description,
-          prepTimeMinutes: data.recipe.prepTimeMinutes || 10,
-          cookTimeMinutes: data.recipe.cookTimeMinutes || 15,
-          servings: data.recipe.servings || servings,
-          difficulty: data.recipe.difficulty || 'Fácil',
-          ingredients: data.recipe.ingredients || [],
-          steps: data.recipe.steps || [],
-          validationsCount: 1,
-          isValidated: false,
-          author: 'CociFlex IA (Gemini 3.8)',
-          authorRole: 'Chef Cero Desperdicio',
-          imageUrl: GENERATED_IMAGES.arrozPollo,
-          wasteReductionTip: data.recipe.wasteReductionTip || 'Aprovecha todos los ingredientes al 100%.',
-          caloriesApprox: data.recipe.caloriesApprox,
-        };
+        const fullRecipe: Recipe = buildRecipeFromAi(data.recipe, { preference, servings });
 
         onGeneratedSuccess(fullRecipe);
       }

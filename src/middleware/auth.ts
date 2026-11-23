@@ -30,3 +30,26 @@ export const requireAuth = async (
     return res.status(401).json({ error: 'No autorizado: sesión inválida o expirada.' });
   }
 };
+
+/**
+ * Like requireAuth, but never blocks: when a valid token is present it fills
+ * req.user, otherwise the request continues as anonymous.
+ */
+export const optionalAuth = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.split('Bearer ')[1];
+    if (token) {
+      try {
+        req.user = await adminAuth.verifyIdToken(token);
+      } catch {
+        // Invalid or expired token: treat as anonymous.
+      }
+    }
+  }
+  return next();
+};

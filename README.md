@@ -1,6 +1,6 @@
 # CociFlex
 
-**Asistente digital e innovación culinaria.** Aplicación web que sugiere recetas mexicanas con los ingredientes que ya tienes en casa para reducir el desperdicio de comida. Incluye recetas generadas con IA, guías de fermentación con un asistente de IA local (Ollama) y una comunidad de cocineros donde las recetas se certifican con validaciones.
+**Asistente digital e innovación culinaria.** Aplicación web que sugiere recetas mexicanas con los ingredientes que ya tienes en casa para reducir el desperdicio de comida. Incluye recetas generadas con IA (con historial por usuario), guías de fermentación con un asistente de IA local (Ollama) y una comunidad de cocineros donde las recetas se certifican con validaciones. Los datos se guardan en MariaDB.
 
 Pensada para estudiantes foráneos, profesionales y cocineros caseros.
 
@@ -46,14 +46,18 @@ Se conecta a un modelo que corre en **tu propia computadora** (Ollama o LM Studi
 ### Cuentas y datos de usuario
 
 - Inicio de sesión con **Google** (Firebase Auth). El servidor verifica el token de cada petición a `/api/me/...`.
-- Cada usuario guarda en PostgreSQL su perfil y preferencia alimentaria, su despensa, su lista de compras y las recetas generadas con IA.
+- Cada usuario guarda en MariaDB su perfil y preferencia alimentaria, su despensa, su lista de compras, las recetas generadas con IA y su historial de generaciones.
 - Las validaciones de la comunidad se guardan por usuario, con una sola validación por receta.
+
+### Historial de recetas
+
+Cada vez que un usuario con sesión iniciada genera una receta, el servidor guarda la petición completa: ingredientes, tiempo, comensales, preferencia y notas, además del resultado (la receta en JSON), el estado (`ok`, `fallback` o `error`), el modelo, el mensaje de error si lo hubo y cuánto tardó. En el perfil, el usuario puede ver su historial, abrir una receta anterior o borrar una entrada. Las generaciones sin sesión no se guardan.
 
 ## Tecnologías
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Motion, Lucide.
 - **Backend:** Node.js y Express (`server.ts`), que sirve la API y la aplicación.
-- **Base de datos:** PostgreSQL con Drizzle ORM.
+- **Base de datos:** MariaDB con Drizzle ORM (driver `mysql2`).
 - **Autenticación:** Firebase Auth (Google) y Firebase Admin.
 - **IA:** Gemini API (recetas, en el servidor) y Ollama o LM Studio (fermentos, en el equipo del usuario).
 
@@ -67,7 +71,8 @@ src/
     mobile/                    Vista móvil y BioAsistente de fermentos
   contexts/AuthContext.tsx     Sesión con Google
   data/                        Recetas, guías de fermentación y datos de comunidad
-  db/                          Esquema Drizzle, conexión y consultas
+  db/                          Esquema Drizzle (MariaDB), conexión y consultas
+database/schema.sql            Script SQL para crear las tablas a mano
   middleware/auth.ts           Verificación del token de Firebase
   services/                    Cliente de IA local (Ollama / LM Studio)
   utils/                       Motor de coincidencia y pasos del recorrido guiado
@@ -77,46 +82,74 @@ src/
 
 | Método y ruta | Acceso | Descripción |
 |---|---|---|
-| `GET /api/me/state` | Con sesión | Perfil, despensa, lista de compras y recetas guardadas. |
+| `GET /api/me/state` | Con sesión | Perfil, despensa, lista de compras, recetas guardadas e historial. |
 | `PUT /api/me/preferences` | Con sesión | Guarda preferencia alimentaria y estado del recorrido. |
 | `PUT /api/me/pantry` | Con sesión | Reemplaza la despensa del usuario. |
 | `PUT /api/me/shopping-list` | Con sesión | Reemplaza la lista de compras. |
 | `POST /api/me/recipes` | Con sesión | Guarda una receta generada con IA. |
+| `GET /api/me/history` | Con sesión | Historial de generaciones de recetas (más recientes primero). |
+| `DELETE /api/me/history/:id` | Con sesión | Borra una entrada del historial propio. |
 | `GET /api/community/validations` | Público | Validaciones de las recetas de la comunidad. |
 | `POST /api/community/validate` | Con sesión | Registra la validación de una receta. |
-| `POST /api/generate-recipe` | Público | Genera una receta con IA a partir de los ingredientes. |
+| `POST /api/generate-recipe` | Público; con sesión también guarda el historial | Genera una receta con IA a partir de los ingredientes. |
 
 ### Tablas
 
-`users`, `pantry_items`, `shopping_items`, `saved_recipes` y `community_validations`.
+| Tabla | Contenido |
+|---|---|
+| `users` | Cuenta (uid de Firebase, correo, nombre, preferencia alimentaria, recorrido completado, último acceso). |
+| `pantry_items` | Ingredientes de la alacena de cada usuario. |
+| `shopping_items` | Lista de compras (mandado). |
+| `saved_recipes` | Recetas generadas con IA que el usuario conserva (JSON completo). |
+| `recipe_history` | Cada generación: datos de entrada, receta resultante, estado, modelo, error y duración. |
+| `community_validations` | Validaciones de la comunidad, una por usuario y receta. |
+
+Todas las tablas del usuario se borran en cascada si se elimina el usuario.
 
 ## Ejecutar en local
 
-Requisitos: Node.js y una base de datos PostgreSQL.
+Requisitos: Node.js y MariaDB 10.6 o superior.
 
-1. Instala las dependencias:
+1. Crea la base de datos y los usuarios en MariaDB (como administrador):
+   ```sql
+   CREATE DATABASE cociflex CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'cociflex_app'@'localhost' IDENTIFIED BY 'tu_contraseña';
+   CREATE USER 'cociflex_admin'@'localhost' IDENTIFIED BY 'otra_contraseña';
+   GRANT SELECT, INSERT, UPDATE, DELETE ON cociflex.* TO 'cociflex_app'@'localhost';
+   GRANT ALL ON cociflex.* TO 'cociflex_admin'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+2. Instala las dependencias:
    ```bash
    npm install
    ```
-2. Copia `.env.example` a `.env` y completa los valores (clave de Gemini y datos de la base de datos).
-3. Crea las tablas:
+3. Copia `.env.example` a `.env` y completa los valores.
+4. Crea las tablas, con cualquiera de estas dos opciones:
    ```bash
-   npx drizzle-kit push --config src/db/drizzle.config.ts
+   npm run db:push                      # con Drizzle
+   mariadb -u cociflex_admin -p cociflex < database/schema.sql   # con SQL
    ```
-4. Inicia la aplicación:
+5. Inicia la aplicación:
    ```bash
    npm run dev
    ```
-5. Abre `http://localhost:3000`.
+6. Abre `http://localhost:3000`.
 
 Para usar el BioAsistente con IA local, instala [Ollama](https://ollama.com), descarga un modelo (`ollama pull llama3.2`) y, si el navegador bloquea la conexión, inicia Ollama permitiendo el origen de la app (variable `OLLAMA_ORIGINS`).
+
+En CachyOS (Arch Linux) puedes instalar y arrancar MariaDB con:
+```bash
+sudo pacman -S mariadb
+sudo mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+sudo systemctl enable --now mariadb
+```
 
 ## Variables de entorno
 
 | Variable | Uso |
 |---|---|
 | `GEMINI_API_KEY` | Generación de recetas con IA (solo servidor). |
-| `SQL_HOST`, `SQL_USER`, `SQL_PASSWORD`, `SQL_DB_NAME` | Conexión de la aplicación a PostgreSQL. |
+| `SQL_HOST`, `SQL_PORT`, `SQL_USER`, `SQL_PASSWORD`, `SQL_DB_NAME` | Conexión de la aplicación a MariaDB (el puerto por defecto es 3306). |
 | `SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD` | Solo para crear las tablas con `drizzle-kit`. |
 | `PORT` | Puerto del servidor (por defecto 3000). |
 | `NODE_ENV` | Con `production` sirve la carpeta `dist` ya compilada. |
@@ -130,7 +163,7 @@ npm run build
 NODE_ENV=production npm start
 ```
 
-Necesitas un hosting que ejecute Node.js y una base de datos PostgreSQL accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque la clave de IA y la base de datos viven en el servidor.
+Necesitas un hosting que ejecute Node.js y una base de datos MariaDB accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque la clave de IA y la base de datos viven en el servidor.
 
 ## Pruebas
 
@@ -146,3 +179,5 @@ Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`) 
 - La IA local de fermentos depende de que el usuario tenga Ollama o LM Studio en su equipo.
 - La clave de Firebase de cliente está en `firebase-applet-config.json`; es pública por diseño, pero conviene restringir los dominios autorizados en la consola de Firebase.
 - Las recetas de comunidad de ejemplo viven en el código; solo las validaciones se guardan en la base de datos.
+- El historial solo guarda las generaciones de usuarios con sesión iniciada.
+- Las pruebas automáticas (`npm test`) no incluyen la base de datos; la capa de datos se probó contra MariaDB 10.11.
