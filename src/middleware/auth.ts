@@ -1,55 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
-import { DecodedIdToken } from 'firebase-admin/auth';
-import { adminAuth } from '../lib/firebase-admin.ts';
+import { SESSION_COOKIE, findSessionUser, readCookie, type SessionUser } from '../auth/localAuth.ts';
 
 export interface AuthRequest extends Request {
-  user?: DecodedIdToken;
+  user?: SessionUser;
 }
 
-export const requireAuth = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No autorizado: falta token de sesión.' });
-  }
+export const sessionToken = (req: Request) => readCookie(req.headers.cookie, SESSION_COOKIE);
 
-  const token = authHeader.split('Bearer ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'No autorizado: token vacío.' });
-  }
-
+export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    req.user = decodedToken;
+    const user = await findSessionUser(sessionToken(req));
+    if (!user) {
+      return res.status(401).json({ error: 'No autorizado: inicia sesión de nuevo.' });
+    }
+    req.user = user;
     return next();
   } catch (error) {
-    console.error('Error verifying Firebase ID token:', error);
-    return res.status(401).json({ error: 'No autorizado: sesión inválida o expirada.' });
+    console.error('Error checking session:', error);
+    return res.status(500).json({ error: 'No se pudo verificar la sesión.' });
   }
 };
 
 /**
- * Like requireAuth, but never blocks: when a valid token is present it fills
- * req.user, otherwise the request continues as anonymous.
+ * Like requireAuth, but never blocks: with a valid session it fills req.user,
+ * otherwise the request continues as anonymous.
  */
-export const optionalAuth = async (
-  req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.split('Bearer ')[1];
-    if (token) {
-      try {
-        req.user = await adminAuth.verifyIdToken(token);
-      } catch {
-        // Invalid or expired token: treat as anonymous.
-      }
-    }
+export const optionalAuth = async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  try {
+    req.user = (await findSessionUser(sessionToken(req))) ?? undefined;
+  } catch {
+    // Database hiccup: treat as anonymous.
   }
   return next();
 };

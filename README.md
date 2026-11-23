@@ -30,7 +30,7 @@ Compara los ingredientes del usuario con cada receta sin distinguir acentos ni m
 
 ### Recetas con IA
 
-`POST /api/generate-recipe` llama a la API de Gemini desde el servidor, de modo que la clave nunca llega al navegador. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Si no hay clave configurada, el servidor devuelve una receta de respaldo para que la app siga funcionando.
+`POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
 
 ### BioAsistente de IA local (fermentos)
 
@@ -45,7 +45,8 @@ Se conecta a un modelo que corre en **tu propia computadora** (Ollama o LM Studi
 
 ### Cuentas y datos de usuario
 
-- Inicio de sesión con **Google** (Firebase Auth). El servidor verifica el token de cada petición a `/api/me/...`.
+- Cuentas **locales** con correo y contraseña, guardadas en MariaDB. La contraseña se cifra con scrypt y la sesión vive en una cookie `HttpOnly` (`SameSite=Lax`, 30 días); en la base solo se guarda el hash SHA-256 de la sesión. No depende de servicios externos.
+- Límite de 10 intentos de inicio de sesión o registro cada 15 minutos por IP.
 - Cada usuario guarda en MariaDB su perfil y preferencia alimentaria, su despensa, su lista de compras, las recetas generadas con IA y su historial de generaciones.
 - Las validaciones de la comunidad se guardan por usuario, con una sola validación por receta.
 
@@ -58,8 +59,8 @@ Cada vez que un usuario con sesión iniciada genera una receta, el servidor guar
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Motion, Lucide.
 - **Backend:** Node.js y Express (`server.ts`), que sirve la API y la aplicación.
 - **Base de datos:** MariaDB con Drizzle ORM (driver `mysql2`).
-- **Autenticación:** Firebase Auth (Google) y Firebase Admin.
-- **IA:** Gemini API (recetas, en el servidor) y Ollama o LM Studio (fermentos, en el equipo del usuario).
+- **Autenticación:** cuentas locales en MariaDB (scrypt de `node:crypto` y cookies de sesión).
+- **IA:** Ollama o LM Studio (recetas desde el servidor, y fermentos desde el equipo del usuario).
 
 ## Estructura del proyecto
 
@@ -69,11 +70,13 @@ src/
   App.tsx                      Estado global, sesión y sincronización con la API
   components/                  Interfaz (workspace, comunidad, fermentos, modales, tour)
     mobile/                    Vista móvil y BioAsistente de fermentos
-  contexts/AuthContext.tsx     Sesión con Google
+  contexts/AuthContext.tsx     Sesión (registro, inicio y cierre de sesión)
   data/                        Recetas, guías de fermentación y datos de comunidad
   db/                          Esquema Drizzle (MariaDB), conexión y consultas
 database/schema.sql            Script SQL para crear las tablas a mano
-  middleware/auth.ts           Verificación del token de Firebase
+  middleware/auth.ts           Verificación de la cookie de sesión
+  auth/localAuth.ts            Contraseñas, sesiones y cookies
+  ai/                          Cliente del modelo local para recetas y limitador
   services/                    Cliente de IA local (Ollama / LM Studio)
   utils/                       Motor de coincidencia y pasos del recorrido guiado
 ```
@@ -82,6 +85,10 @@ database/schema.sql            Script SQL para crear las tablas a mano
 
 | Método y ruta | Acceso | Descripción |
 |---|---|---|
+| `POST /api/auth/register` | Público | Crea una cuenta (correo, contraseña de 8+ caracteres, nombre opcional) e inicia sesión. |
+| `POST /api/auth/login` | Público | Inicia sesión y envía la cookie de sesión. |
+| `POST /api/auth/logout` | Público | Cierra la sesión actual. |
+| `GET /api/auth/me` | Público | Usuario de la sesión actual o `null`. |
 | `GET /api/me/state` | Con sesión | Perfil, despensa, lista de compras, recetas guardadas e historial. |
 | `PUT /api/me/preferences` | Con sesión | Guarda preferencia alimentaria y estado del recorrido. |
 | `PUT /api/me/pantry` | Con sesión | Reemplaza la despensa del usuario. |
@@ -97,7 +104,8 @@ database/schema.sql            Script SQL para crear las tablas a mano
 
 | Tabla | Contenido |
 |---|---|
-| `users` | Cuenta (uid de Firebase, correo, nombre, preferencia alimentaria, recorrido completado, último acceso). |
+| `users` | Cuenta (uid, correo único, contraseña cifrada, nombre, preferencia alimentaria, recorrido completado, último acceso). |
+| `sessions` | Sesiones activas (hash del token, usuario y vencimiento). |
 | `pantry_items` | Ingredientes de la alacena de cada usuario. |
 | `shopping_items` | Lista de compras (mandado). |
 | `saved_recipes` | Recetas generadas con IA que el usuario conserva (JSON completo). |
@@ -148,7 +156,9 @@ sudo systemctl enable --now mariadb
 
 | Variable | Uso |
 |---|---|
-| `GEMINI_API_KEY` | Generación de recetas con IA (solo servidor). |
+| `LLM_BASE_URL`, `LLM_MODEL` | Modelo local para recetas, p. ej. `http://10.8.0.2:11434/v1` y `qwen2.5:7b`. |
+| `LLM_TIMEOUT_MS`, `LLM_MAX_TOKENS`, `LLM_MAX_CONCURRENT`, `LLM_MAX_QUEUE` | Tiempo máximo, longitud y concurrencia de la IA local (opcionales). |
+| `HOST` | Interfaz donde escucha el servidor (por defecto `0.0.0.0`). |
 | `SQL_HOST`, `SQL_PORT`, `SQL_USER`, `SQL_PASSWORD`, `SQL_DB_NAME` | Conexión de la aplicación a MariaDB (el puerto por defecto es 3306). |
 | `SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD` | Solo para crear las tablas con `drizzle-kit`. |
 | `PORT` | Puerto del servidor (por defecto 3000). |
@@ -177,7 +187,8 @@ Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`) 
 ## Limitaciones conocidas
 
 - La IA local de fermentos depende de que el usuario tenga Ollama o LM Studio en su equipo.
-- La clave de Firebase de cliente está en `firebase-applet-config.json`; es pública por diseño, pero conviene restringir los dominios autorizados en la consola de Firebase.
+- Sin HTTPS, la contraseña viaja sin cifrar entre el navegador y el servidor; para uso real conviene un dominio con HTTPS.
+- La IA de recetas depende de que el equipo con Ollama y la VPN estén encendidos.
 - Las recetas de comunidad de ejemplo viven en el código; solo las validaciones se guardan en la base de datos.
 - El historial solo guarda las generaciones de usuarios con sesión iniciada.
 - Las pruebas automáticas (`npm test`) no incluyen la base de datos; la capa de datos se probó contra MariaDB 10.11.

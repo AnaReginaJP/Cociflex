@@ -21,7 +21,7 @@ export function buildRecipeFromAi(
     steps: raw.steps || [],
     validationsCount: 1,
     isValidated: false,
-    author: 'CociFlex IA (Gemini 3.8)',
+    author: 'CociFlex IA (modelo local)',
     authorRole: 'Chef Cero Desperdicio',
     imageUrl: GENERATED_IMAGES.arrozPollo,
     wasteReductionTip: raw.wasteReductionTip || 'Aprovecha todos los ingredientes al 100%.',

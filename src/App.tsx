@@ -20,7 +20,7 @@ const DEFAULT_PANTRY = COMMON_PANTRY_INGREDIENTS.filter((i) => i.defaultSelected
 );
 
 const CociflexAppContent: React.FC = () => {
-  const { firebaseUser, idToken, getFreshToken } = useAuth();
+  const { user, isAuthReady } = useAuth();
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('inicio');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -98,22 +98,30 @@ const CociflexAppContent: React.FC = () => {
     };
   }, []);
 
-  // Load authenticated user state from Cloud SQL whenever signed in
+  // A profile saved in the browser must not look signed in once the session is gone.
   useEffect(() => {
-    if (!idToken) return;
+    if (!isAuthReady || user || !userProfile.isLoggedIn) return;
+    const signedOut = { ...userProfile, isLoggedIn: false };
+    setUserProfile(signedOut);
+    try {
+      localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(signedOut));
+    } catch {
+      // ignore
+    }
+  }, [isAuthReady, user, userProfile]);
+
+  // Load the signed-in user's state from MariaDB (session cookie) whenever the account changes
+  useEffect(() => {
+    if (!user) return;
     let active = true;
 
-    fetch('/api/me/state', {
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-      },
-    })
+    fetch('/api/me/state', { credentials: 'same-origin' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!active || !data?.user) return;
         const syncedProfile: UserProfileData = {
-          name: data.user.displayName || firebaseUser?.displayName || '',
-          email: data.user.email || firebaseUser?.email || '',
+          name: data.user.displayName || user.displayName || '',
+          email: data.user.email || user.email || '',
           dietaryPreference: data.user.dietaryPreference || 'Omnívoro',
           isLoggedIn: true,
         };
@@ -151,19 +159,16 @@ const CociflexAppContent: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [idToken, firebaseUser]);
+  }, [user?.uid]);
 
   const syncWithAuth = useCallback(
     async (path: string, method: 'PUT' | 'POST', payload: unknown) => {
-      const token = (await getFreshToken()) || idToken;
-      if (!token) return null;
+      if (!user) return null;
       try {
         const res = await fetch(path, {
           method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         return res.ok ? await res.json() : null;
@@ -171,7 +176,7 @@ const CociflexAppContent: React.FC = () => {
         return null;
       }
     },
-    [getFreshToken, idToken]
+    [user]
   );
 
   const handleCloseWalkthrough = useCallback(
@@ -259,7 +264,7 @@ const CociflexAppContent: React.FC = () => {
   const handleValidateCommunityRecipe = useCallback(
     async (recipeId: string) => {
       const validatorName =
-        userProfile.name || firebaseUser?.displayName || 'Tú (Verificado)';
+        userProfile.name || user?.displayName || 'Tú (Verificado)';
 
       setCommunityExtraValidations((prev) => {
         const existing = prev[recipeId] || [];
@@ -282,7 +287,7 @@ const CociflexAppContent: React.FC = () => {
         }));
       }
     },
-    [userProfile.name, firebaseUser, syncWithAuth]
+    [userProfile.name, user, syncWithAuth]
   );
 
   const handleOpenAiGenerator = (
@@ -299,19 +304,16 @@ const CociflexAppContent: React.FC = () => {
   };
 
   const refreshRecipeHistory = useCallback(async () => {
-    const token = await getFreshToken();
-    if (!token) return;
+    if (!user) return;
     try {
-      const res = await fetch('/api/me/history', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/me/history', { credentials: 'same-origin' });
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data.recipeHistory)) setRecipeHistory(data.recipeHistory);
     } catch {
       // Keep the history already on screen
     }
-  }, [getFreshToken]);
+  }, [user]);
 
   const handleGeneratedRecipeSuccess = (recipe: Recipe) => {
     setIsAiModalOpen(false);
@@ -334,13 +336,9 @@ const CociflexAppContent: React.FC = () => {
 
   const handleDeleteHistoryEntry = async (id: number) => {
     setRecipeHistory((prev) => prev.filter((entry) => entry.id !== id));
-    const token = await getFreshToken();
-    if (!token) return;
+    if (!user) return;
     try {
-      await fetch(`/api/me/history/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await fetch(`/api/me/history/${id}`, { method: 'DELETE', credentials: 'same-origin' });
     } catch {
       refreshRecipeHistory();
     }
@@ -393,7 +391,6 @@ const CociflexAppContent: React.FC = () => {
           initialServings={aiServings}
           initialPreference={aiPreference}
           onGeneratedSuccess={handleGeneratedRecipeSuccess}
-          getAuthToken={getFreshToken}
         />
       )}
 

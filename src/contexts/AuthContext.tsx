@@ -1,106 +1,106 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import {
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
-import { auth, googleAuthProvider } from '../lib/firebase.ts';
+
+// Local accounts: the server keeps the session in an HttpOnly cookie, so no token lives in JS.
+export interface AuthUser {
+  uid: string;
+  email: string;
+  displayName: string;
+}
 
 interface AuthContextValue {
-  firebaseUser: FirebaseUser | null;
-  idToken: string | null;
+  user: AuthUser | null;
   isAuthReady: boolean;
   isSigningIn: boolean;
   authError: string | null;
-  signInWithGoogle: () => Promise<string | null>;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (displayName: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  getFreshToken: () => Promise<string | null>;
+  clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function postJson(path: string, body: unknown) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, data };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Restore the session on load.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          setIdToken(token);
-        } catch {
-          setIdToken(null);
-        }
-      } else {
-        setIdToken(null);
-      }
-      setIsAuthReady(true);
-    });
-
-    return () => unsubscribe();
+    let active = true;
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active) setUser(data?.user ?? null);
+      })
+      .catch(() => {
+        // Offline: keep working without an account.
+      })
+      .finally(() => {
+        if (active) setIsAuthReady(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<string | null> => {
+  const authenticate = useCallback(async (path: string, body: unknown): Promise<boolean> => {
     setIsSigningIn(true);
     setAuthError(null);
     try {
-      const credential = await signInWithPopup(auth, googleAuthProvider);
-      const token = await credential.user.getIdToken();
-      setFirebaseUser(credential.user);
-      setIdToken(token);
-      return token;
-    } catch (error: any) {
-      if (error?.code === 'auth/popup-closed-by-user') {
-        setAuthError('Se cerró la ventana de inicio de sesión antes de completar.');
-      } else {
-        setAuthError('No se pudo iniciar sesión con Google. Intenta de nuevo.');
+      const { ok, data } = await postJson(path, body);
+      if (!ok || !data?.user) {
+        setAuthError(data?.error || 'No se pudo iniciar sesión. Intenta de nuevo.');
+        return false;
       }
-      return null;
+      setUser(data.user);
+      return true;
+    } catch {
+      setAuthError('No hay conexión con el servidor. Intenta de nuevo.');
+      return false;
     } finally {
       setIsSigningIn(false);
     }
   }, []);
 
+  const login = useCallback(
+    (email: string, password: string) => authenticate('/api/auth/login', { email, password }),
+    [authenticate]
+  );
+
+  const register = useCallback(
+    (displayName: string, email: string, password: string) =>
+      authenticate('/api/auth/register', { displayName, email, password }),
+    [authenticate]
+  );
+
   const logout = useCallback(async () => {
     setAuthError(null);
     try {
-      await signOut(auth);
-      setFirebaseUser(null);
-      setIdToken(null);
+      await postJson('/api/auth/logout', {});
     } catch {
-      // ignore
+      // ignore: the local state is cleared anyway
     }
+    setUser(null);
   }, []);
 
-  const getFreshToken = useCallback(async (): Promise<string | null> => {
-    if (!auth.currentUser) return null;
-    try {
-      const token = await auth.currentUser.getIdToken();
-      setIdToken(token);
-      return token;
-    } catch {
-      return idToken;
-    }
-  }, [idToken]);
+  const clearAuthError = useCallback(() => setAuthError(null), []);
 
   return (
     <AuthContext.Provider
-      value={{
-        firebaseUser,
-        idToken,
-        isAuthReady,
-        isSigningIn,
-        authError,
-        signInWithGoogle,
-        logout,
-        getFreshToken,
-      }}
+      value={{ user, isAuthReady, isSigningIn, authError, login, register, logout, clearAuthError }}
     >
       {children}
     </AuthContext.Provider>
