@@ -26,8 +26,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="home-search"]',
   },
   {
-    id: 'pantry-matcher',
+    id: 'recipe-to-fit',
     stepNumber: 2,
+    title: '¿No te alcanza un ingrediente? Ajusta la receta',
+    subtitle: 'Receta a tu medida',
+    description:
+      'Abre cualquier receta y entra a "¿No te alcanza algún ingrediente?". Escribe cuánto tienes y CociFlex reduce toda la receta en la misma proporción: porciones, cantidades y medidas de cocina. Si quieres, la IA local reescribe los pasos.',
+    actionTip: 'Abre el Pastel de Zanahoria, elige Harina de trigo y escribe 1: verás la receta al 50\u00a0% y cuánto te falta para hacerla completa.',
+    targetTab: 'inicio',
+    targetSelector: '[data-tour="recipe-grid"]',
+  },
+  {
+    id: 'pantry-matcher',
+    stepNumber: 3,
     title: 'Marca tu alacena y calcula coincidencias',
     subtitle: 'Mi Cocina — Motor Cero Desperdicio',
     description:
@@ -38,7 +49,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'ai-recipe-studio',
-    stepNumber: 3,
+    stepNumber: 4,
     title: 'Crea una receta original con IA',
     subtitle: 'Generador Culinario Personalizado',
     description:
@@ -49,7 +60,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'local-ai-ferments',
-    stepNumber: 4,
+    stepNumber: 5,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -60,7 +71,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 5,
+    stepNumber: 6,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:

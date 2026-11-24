@@ -554,7 +554,7 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
               )}
 
             {/* Recipes Grid */}
-            <section className="space-y-4">
+            <section data-tour="recipe-grid" className="space-y-4">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h2 className="font-display text-lg md:text-xl font-extrabold text-[#33252A]">
