@@ -18,7 +18,7 @@ La aplicación se organiza en cinco pestañas:
 
 Al abrir cualquier receta entras al **modo cocina** (temporizador, pasos para marcar y porciones ajustables) y al apartado **Receta a tu medida**, para prepararla con lo que tienes cuando un ingrediente no te alcanza.
 
-Además, un **recorrido guiado** de 5 pasos explica cada pestaña la primera vez que entras.
+Además, un **recorrido guiado** de 6 pasos explica cada pestaña y la receta a tu medida la primera vez que entras (se repite desde el botón "Guía Interactiva").
 
 ### Catálogo incluido
 
