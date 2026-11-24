@@ -121,9 +121,11 @@ if [ "$has_users" = "0" ]; then
 else
   echo "    Las tablas ya existen: se conservan los datos."
 fi
-# Cuentas locales (sin Firebase): contraseña cifrada y sesiones. Idempotente.
-mariadb "$DB_NAME" < "$APP_DIR/database/migrate_local_auth.sql"
-echo "    Migración de cuentas locales aplicada."
+# Migraciones idempotentes (database/migrate_*.sql), en orden alfabético.
+for migration in $(ls "$APP_DIR"/database/migrate_*.sql 2>/dev/null | sort); do
+  mariadb "$DB_NAME" < "$migration"
+  echo "    Migración aplicada: $(basename "$migration")"
+done
 
 log "Instalando dependencias de producción (puede tardar unos minutos)"
 (cd "$APP_DIR" && npm install --omit=dev --no-audit --no-fund --loglevel=error)
@@ -218,8 +220,8 @@ server {
         proxy_read_timeout 120s;
     }
 
-    # La IA local tarda minutos: sin búfer ni compresión y con espera larga
-    location = /api/generate-recipe {
+    # La IA local tarda minutos (recetas y "Receta a tu medida"): sin búfer ni compresión y con espera larga
+    location ~ ^/api/(generate-recipe|recipes/partition-steps)\$ {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;

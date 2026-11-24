@@ -1,0 +1,17 @@
+# Keep Unix line endings in the repository and on every checkout (also on Windows),
+# so scripts copied to the Linux server keep working.
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.sql  text eol=lf
+*.mjs  text eol=lf
+
+# Binary files
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.gz   binary
+*.zip  binary

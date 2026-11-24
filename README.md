@@ -16,6 +16,8 @@ La aplicación se organiza en cinco pestañas:
 | **Comunidad** | Recetas compartidas por otros usuarios. Una receta queda certificada al reunir 3 validaciones de cocineros. |
 | **Mandado** | Lista de compras con los ingredientes que te faltan. |
 
+Al abrir cualquier receta entras al **modo cocina** (temporizador, pasos para marcar y porciones ajustables) y al apartado **Receta a tu medida**, para prepararla con lo que tienes cuando un ingrediente no te alcanza.
+
 Además, un **recorrido guiado** de 5 pasos explica cada pestaña la primera vez que entras.
 
 ### Catálogo incluido
@@ -31,6 +33,19 @@ Compara los ingredientes del usuario con cada receta sin distinguir acentos ni m
 ### Recetas con IA
 
 `POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
+
+### Receta a tu medida (cuando no te alcanza un ingrediente)
+
+Si tienes un ingrediente pero no la cantidad completa (por ejemplo, la receta rinde 5 hotcakes y solo te alcanza la harina para 3), el apartado **"¿No te alcanza algún ingrediente?"** del detalle de la receta calcula la versión reducida:
+
+1. Eliges el ingrediente que no te alcanza y escribes cuánto tienes (acepta `1`, `1/2`, `1½`, `0.5` o `media`), en la unidad de la receta o en una equivalente (tazas, cucharadas, cucharaditas, ml, litros, g o kg). Puedes agregar varios.
+2. El **motor de reglas** (`src/utils/recipePartition.ts`, sin IA generativa) toma la proporción del ingrediente que más limita y reduce toda la receta en esa misma proporción:
+   - convierte unidades y redondea a medidas de cocina (¼, ⅓, ½ o ¾ de taza; pasa a cucharadas si la fracción no es exacta);
+   - los huevos solo se parten en mitades y explica cómo medir medio huevo;
+   - lo que va "al gusto" o por pizca no cambia, y un ingrediente opcional que no tienes se omite;
+   - ajusta las medidas escritas en los pasos, pero no los tiempos, las temperaturas ni las cantidades "en cada pieza";
+   - indica el rendimiento nuevo, tiempos aproximados, consejos (molde u olla más pequeños) y cuánto te falta para la receta completa, con botón para agregarlo a la lista de mandado.
+3. Opcionalmente, **Ajustar pasos con IA local** envía la receta ya reducida a `POST /api/recipes/partition-steps`. El modelo local reescribe los pasos con las nuevas cantidades, tiempos y recipientes. Comparte la cola con las recetas con IA; si la IA local está apagada u ocupada, se quedan los pasos ajustados por reglas.
 
 ### BioAsistente de IA local (fermentos)
 
@@ -76,9 +91,9 @@ src/
 database/schema.sql            Script SQL para crear las tablas a mano
   middleware/auth.ts           Verificación de la cookie de sesión
   auth/localAuth.ts            Contraseñas, sesiones y cookies
-  ai/                          Cliente del modelo local para recetas y limitador
+  ai/                          Cliente del modelo local (recetas y receta a tu medida) y limitador
   services/                    Cliente de IA local (Ollama / LM Studio)
-  utils/                       Motor de coincidencia y pasos del recorrido guiado
+  utils/                       Motor de coincidencia, receta a tu medida y recorrido guiado
 ```
 
 ## API
@@ -99,6 +114,7 @@ database/schema.sql            Script SQL para crear las tablas a mano
 | `GET /api/community/validations` | Público | Validaciones de las recetas de la comunidad. |
 | `POST /api/community/validate` | Con sesión | Registra la validación de una receta. |
 | `POST /api/generate-recipe` | Público; con sesión también guarda el historial | Genera una receta con IA a partir de los ingredientes. |
+| `POST /api/recipes/partition-steps` | Público | Reescribe con la IA local los pasos de una receta reducida (Receta a tu medida). |
 
 ### Tablas
 
@@ -116,32 +132,15 @@ Todas las tablas del usuario se borran en cascada si se elimina el usuario.
 
 ## Ejecutar en local
 
-Requisitos: Node.js y MariaDB 10.6 o superior.
+Funciona en **Windows 10/11**, Linux y macOS. Requisitos: Node.js 22.18 o superior (recomendado 24 LTS), Git y Docker Desktop.
 
-1. Crea la base de datos y los usuarios en MariaDB (como administrador):
-   ```sql
-   CREATE DATABASE cociflex CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'cociflex_app'@'localhost' IDENTIFIED BY 'tu_contraseña';
-   CREATE USER 'cociflex_admin'@'localhost' IDENTIFIED BY 'otra_contraseña';
-   GRANT SELECT, INSERT, UPDATE, DELETE ON cociflex.* TO 'cociflex_app'@'localhost';
-   GRANT ALL ON cociflex.* TO 'cociflex_admin'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-2. Instala las dependencias:
-   ```bash
-   npm install
-   ```
-3. Copia `.env.example` a `.env` y completa los valores.
-4. Crea las tablas, con cualquiera de estas dos opciones:
-   ```bash
-   npm run db:push                      # con Drizzle
-   mariadb -u cociflex_admin -p cociflex < database/schema.sql   # con SQL
-   ```
-5. Inicia la aplicación:
-   ```bash
-   npm run dev
-   ```
-6. Abre `http://localhost:3000`.
+```powershell
+npm install
+npm run db:dev     # MariaDB de desarrollo en Docker (puerto 3307), tablas, migraciones y .env
+npm run dev        # http://localhost:3000
+```
+
+Si prefieres un MariaDB propio (10.6 o superior), crea la base y el usuario `cociflex_app` con permisos `SELECT, INSERT, UPDATE, DELETE`, carga `database/schema.sql` y los `database/migrate_*.sql`, y completa tu `.env` a partir de `.env.example`.
 
 Para usar el BioAsistente con IA local, instala [Ollama](https://ollama.com), descarga un modelo (`ollama pull llama3.2`) y, si el navegador bloquea la conexión, inicia Ollama permitiendo el origen de la app (variable `OLLAMA_ORIGINS`).
 
@@ -168,12 +167,9 @@ Nunca subas tu archivo `.env` al repositorio.
 
 ## Producción
 
-```bash
-npm run build
-NODE_ENV=production npm start
-```
+El servidor del proyecto (Ubuntu con MariaDB, Node.js, systemd y NGINX) se actualiza con `npm run servidor:actualizar`; los detalles están en [deploy/README.md](deploy/README.md).
 
-Necesitas un hosting que ejecute Node.js y una base de datos MariaDB accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque la clave de IA y la base de datos viven en el servidor.
+Necesitas un hosting que ejecute Node.js y una base de datos MariaDB accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque las cuentas, la base de datos y la conexión con la IA viven en el servidor.
 
 ## Pruebas
 
@@ -182,7 +178,7 @@ npm test        # pruebas con el ejecutor nativo de Node
 npm run lint    # revisa los tipos de TypeScript
 ```
 
-Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`) y el recorrido guiado (`src/utils/walkthroughSteps.test.ts`).
+Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`), la receta a tu medida (`src/utils/recipePartition.test.ts`), el recorrido guiado (`src/utils/walkthroughSteps.test.ts`) y el cliente de IA local contra un servidor simulado (`src/ai/*.test.ts`).
 
 ## Limitaciones conocidas
 
