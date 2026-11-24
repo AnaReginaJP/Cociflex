@@ -116,32 +116,15 @@ Todas las tablas del usuario se borran en cascada si se elimina el usuario.
 
 ## Ejecutar en local
 
-Requisitos: Node.js y MariaDB 10.6 o superior.
+Funciona en **Windows 10/11**, Linux y macOS. Requisitos: Node.js 22.18 o superior (recomendado 24 LTS), Git y Docker Desktop.
 
-1. Crea la base de datos y los usuarios en MariaDB (como administrador):
-   ```sql
-   CREATE DATABASE cociflex CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'cociflex_app'@'localhost' IDENTIFIED BY 'tu_contraseña';
-   CREATE USER 'cociflex_admin'@'localhost' IDENTIFIED BY 'otra_contraseña';
-   GRANT SELECT, INSERT, UPDATE, DELETE ON cociflex.* TO 'cociflex_app'@'localhost';
-   GRANT ALL ON cociflex.* TO 'cociflex_admin'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-2. Instala las dependencias:
-   ```bash
-   npm install
-   ```
-3. Copia `.env.example` a `.env` y completa los valores.
-4. Crea las tablas, con cualquiera de estas dos opciones:
-   ```bash
-   npm run db:push                      # con Drizzle
-   mariadb -u cociflex_admin -p cociflex < database/schema.sql   # con SQL
-   ```
-5. Inicia la aplicación:
-   ```bash
-   npm run dev
-   ```
-6. Abre `http://localhost:3000`.
+```powershell
+npm install
+npm run db:dev     # MariaDB de desarrollo en Docker (puerto 3307), tablas, migraciones y .env
+npm run dev        # http://localhost:3000
+```
+
+Si prefieres un MariaDB propio (10.6 o superior), crea la base y el usuario `cociflex_app` con permisos `SELECT, INSERT, UPDATE, DELETE`, carga `database/schema.sql` y los `database/migrate_*.sql`, y completa tu `.env` a partir de `.env.example`.
 
 Para usar el BioAsistente con IA local, instala [Ollama](https://ollama.com), descarga un modelo (`ollama pull llama3.2`) y, si el navegador bloquea la conexión, inicia Ollama permitiendo el origen de la app (variable `OLLAMA_ORIGINS`).
 
@@ -168,12 +151,9 @@ Nunca subas tu archivo `.env` al repositorio.
 
 ## Producción
 
-```bash
-npm run build
-NODE_ENV=production npm start
-```
+El servidor del proyecto (Ubuntu con MariaDB, Node.js, systemd y NGINX) se actualiza con `npm run servidor:actualizar`; los detalles están en [deploy/README.md](deploy/README.md).
 
-Necesitas un hosting que ejecute Node.js y una base de datos MariaDB accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque la clave de IA y la base de datos viven en el servidor.
+Necesitas un hosting que ejecute Node.js y una base de datos MariaDB accesible desde el servidor. Un hosting de páginas estáticas no sirve, porque las cuentas, la base de datos y la conexión con la IA viven en el servidor.
 
 ## Pruebas
 

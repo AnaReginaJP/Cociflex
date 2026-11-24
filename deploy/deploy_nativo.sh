@@ -121,9 +121,11 @@ if [ "$has_users" = "0" ]; then
 else
   echo "    Las tablas ya existen: se conservan los datos."
 fi
-# Cuentas locales (sin Firebase): contraseña cifrada y sesiones. Idempotente.
-mariadb "$DB_NAME" < "$APP_DIR/database/migrate_local_auth.sql"
-echo "    Migración de cuentas locales aplicada."
+# Migraciones idempotentes (database/migrate_*.sql), en orden alfabético.
+for migration in $(ls "$APP_DIR"/database/migrate_*.sql 2>/dev/null | sort); do
+  mariadb "$DB_NAME" < "$migration"
+  echo "    Migración aplicada: $(basename "$migration")"
+done
 
 log "Instalando dependencias de producción (puede tardar unos minutos)"
 (cd "$APP_DIR" && npm install --omit=dev --no-audit --no-fund --loglevel=error)

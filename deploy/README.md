@@ -2,29 +2,45 @@
 
 Despliegue nativo (sin Docker) en Ubuntu: **MariaDB + Node.js + systemd + NGINX**. Está pensado para los recursos del Nodo 4 (1 vCPU, ~750 MiB de RAM libres, solo el puerto 80 abierto): la app compilada usa unos 120 MiB y MariaDB queda limitada a un buffer de 64 MiB.
 
-Se compila en tu PC y al servidor solo se sube el resultado.
+Se compila en tu PC (Windows, Linux o macOS) y al servidor solo se sube el resultado.
 
-## 1. En tu PC: compilar
+## Actualizar el servidor (recomendado: un solo comando)
 
-Desde la carpeta del proyecto:
+Desde `main` y con la llave SSH del servidor. Por defecto se busca en `~/.ssh/Inteligencia_Artificial.pem` (en Windows, `C:\Users\<usuario>\.ssh\`); si está en otra ruta, indícala con `$env:COCIFLEX_SSH_KEY = "C:\ruta\llave.pem"` (PowerShell) o `export COCIFLEX_SSH_KEY=...` (Linux/macOS). En Windows, la llave debe tener permisos solo para tu usuario:
 
-```bash
-bash deploy/build_release.sh
+```powershell
+icacls "$HOME\.ssh\Inteligencia_Artificial.pem" /inheritance:r
+icacls "$HOME\.ssh\Inteligencia_Artificial.pem" /grant:r "$($env:USERNAME):(R)"
 ```
 
-Genera `cociflex-release.tar.gz` (interfaz compilada + servidor en un solo archivo + `schema.sql`).
+Luego:
 
-## 2. Subir al servidor
-
-```bash
-scp -i ~/.ssh/Inteligencia_Artificial.pem cociflex-release.tar.gz deploy/deploy_nativo.sh root@79.143.88.199:/root/
+```powershell
+npm run servidor:actualizar
 ```
 
-## 3. En el servidor: instalar
+Verifica el repositorio, ejecuta `npm run check`, genera el paquete, respalda la base, guarda la versión actual como `cociflex-release-anterior.tar.gz`, sube e instala. Para volver atrás: `npm run servidor:anterior`.
 
-```bash
-ssh -i ~/.ssh/Inteligencia_Artificial.pem root@79.143.88.199
-bash /root/deploy_nativo.sh
+## Paso a paso manual
+
+### 1. En tu PC: compilar
+
+```powershell
+npm run release
+```
+
+Genera `cociflex-release.tar.gz` (interfaz compilada + servidor en un solo archivo + esquema y migraciones SQL).
+
+### 2. Subir al servidor
+
+```powershell
+scp -i $HOME/.ssh/Inteligencia_Artificial.pem cociflex-release.tar.gz deploy/deploy_nativo.sh root@79.143.88.199:/root/
+```
+
+### 3. En el servidor: instalar
+
+```powershell
+ssh -i $HOME/.ssh/Inteligencia_Artificial.pem root@79.143.88.199 "bash /root/deploy_nativo.sh"
 ```
 
 El script configura la IA local (Ollama por la VPN, `http://10.8.0.2:11434/v1`, modelo `qwen2.5:7b`). Hace lo siguiente:
@@ -71,7 +87,7 @@ systemctl restart cociflex           # reiniciar (después de editar /opt/cocifl
 free -h && df -h /                   # memoria y disco
 ```
 
-**Actualizar a una versión nueva:** repite los pasos 1, 2 y 3. El script conserva la base de datos, las tablas, la contraseña y el `.env`.
+**Actualizar a una versión nueva:** `npm run servidor:actualizar` (o los pasos manuales 1, 2 y 3). El script conserva la base de datos, las tablas, la contraseña y el `.env`, y aplica todas las migraciones `database/migrate_*.sql`.
 
 **Cambiar el modelo de IA:** edita `LLM_MODEL` (o `LLM_BASE_URL`) en `/opt/cociflex/.env` y ejecuta `systemctl restart cociflex`.
 
