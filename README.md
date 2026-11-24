@@ -16,6 +16,8 @@ La aplicación se organiza en cinco pestañas:
 | **Comunidad** | Recetas compartidas por otros usuarios. Una receta queda certificada al reunir 3 validaciones de cocineros. |
 | **Mandado** | Lista de compras con los ingredientes que te faltan. |
 
+Al abrir cualquier receta entras al **modo cocina** (temporizador, pasos para marcar y porciones ajustables) y al apartado **Receta a tu medida**, para prepararla con lo que tienes cuando un ingrediente no te alcanza.
+
 Además, un **recorrido guiado** de 5 pasos explica cada pestaña la primera vez que entras.
 
 ### Catálogo incluido
@@ -31,6 +33,19 @@ Compara los ingredientes del usuario con cada receta sin distinguir acentos ni m
 ### Recetas con IA
 
 `POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
+
+### Receta a tu medida (cuando no te alcanza un ingrediente)
+
+Si tienes un ingrediente pero no la cantidad completa (por ejemplo, la receta rinde 5 hotcakes y solo te alcanza la harina para 3), el apartado **"¿No te alcanza algún ingrediente?"** del detalle de la receta calcula la versión reducida:
+
+1. Eliges el ingrediente que no te alcanza y escribes cuánto tienes (acepta `1`, `1/2`, `1½`, `0.5` o `media`), en la unidad de la receta o en una equivalente (tazas, cucharadas, cucharaditas, ml, litros, g o kg). Puedes agregar varios.
+2. El **motor de reglas** (`src/utils/recipePartition.ts`, sin IA generativa) toma la proporción del ingrediente que más limita y reduce toda la receta en esa misma proporción:
+   - convierte unidades y redondea a medidas de cocina (¼, ⅓, ½ o ¾ de taza; pasa a cucharadas si la fracción no es exacta);
+   - los huevos solo se parten en mitades y explica cómo medir medio huevo;
+   - lo que va "al gusto" o por pizca no cambia, y un ingrediente opcional que no tienes se omite;
+   - ajusta las medidas escritas en los pasos, pero no los tiempos, las temperaturas ni las cantidades "en cada pieza";
+   - indica el rendimiento nuevo, tiempos aproximados, consejos (molde u olla más pequeños) y cuánto te falta para la receta completa, con botón para agregarlo a la lista de mandado.
+3. Opcionalmente, **Ajustar pasos con IA local** envía la receta ya reducida a `POST /api/recipes/partition-steps`. El modelo local reescribe los pasos con las nuevas cantidades, tiempos y recipientes. Comparte la cola con las recetas con IA; si la IA local está apagada u ocupada, se quedan los pasos ajustados por reglas.
 
 ### BioAsistente de IA local (fermentos)
 
@@ -76,9 +91,9 @@ src/
 database/schema.sql            Script SQL para crear las tablas a mano
   middleware/auth.ts           Verificación de la cookie de sesión
   auth/localAuth.ts            Contraseñas, sesiones y cookies
-  ai/                          Cliente del modelo local para recetas y limitador
+  ai/                          Cliente del modelo local (recetas y receta a tu medida) y limitador
   services/                    Cliente de IA local (Ollama / LM Studio)
-  utils/                       Motor de coincidencia y pasos del recorrido guiado
+  utils/                       Motor de coincidencia, receta a tu medida y recorrido guiado
 ```
 
 ## API
@@ -99,6 +114,7 @@ database/schema.sql            Script SQL para crear las tablas a mano
 | `GET /api/community/validations` | Público | Validaciones de las recetas de la comunidad. |
 | `POST /api/community/validate` | Con sesión | Registra la validación de una receta. |
 | `POST /api/generate-recipe` | Público; con sesión también guarda el historial | Genera una receta con IA a partir de los ingredientes. |
+| `POST /api/recipes/partition-steps` | Público | Reescribe con la IA local los pasos de una receta reducida (Receta a tu medida). |
 
 ### Tablas
 
@@ -162,7 +178,7 @@ npm test        # pruebas con el ejecutor nativo de Node
 npm run lint    # revisa los tipos de TypeScript
 ```
 
-Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`) y el recorrido guiado (`src/utils/walkthroughSteps.test.ts`).
+Las pruebas cubren el motor de coincidencia (`src/utils/recipeMatcher.test.ts`), la receta a tu medida (`src/utils/recipePartition.test.ts`), el recorrido guiado (`src/utils/walkthroughSteps.test.ts`) y el cliente de IA local contra un servidor simulado (`src/ai/*.test.ts`).
 
 ## Limitaciones conocidas
 

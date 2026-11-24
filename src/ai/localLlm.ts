@@ -3,11 +3,11 @@
 export type LlmErrorCode = 'unreachable' | 'timeout' | 'aborted' | 'http' | 'bad_response';
 
 export class LlmError extends Error {
-  constructor(
-    public code: LlmErrorCode,
-    message: string
-  ) {
+  code: LlmErrorCode;
+
+  constructor(code: LlmErrorCode, message: string) {
     super(message);
+    this.code = code;
   }
 }
 
@@ -86,7 +86,12 @@ const RECIPE_JSON_SCHEMA = {
   required: ['title', 'mealType', 'description', 'ingredients', 'steps', 'wasteReductionTip'],
 };
 
-function buildMessages(req: RecipeRequest) {
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+function buildMessages(req: RecipeRequest): ChatMessage[] {
   const system =
     'Eres CociFlex, un chef de cocina mexicana casera enfocado en cero desperdicio de alimentos. Respondes SOLO con un objeto JSON válido, en español, sin texto antes ni después.';
   const user = `Crea UNA receta que use principalmente estos ingredientes que el usuario tiene en casa:
@@ -199,11 +204,22 @@ async function chat(cfg: LlmConfig, body: unknown, signal: AbortSignal) {
   });
 }
 
-export async function generateRecipe(
+export interface JsonFormat {
+  name: string;
+  schema: object;
+}
+
+/**
+ * Sends a chat to the local model and returns the JSON object it answered with.
+ * Asks for a fixed JSON schema first; older servers that reject it get plain JSON mode.
+ */
+export async function requestJson(
   cfg: LlmConfig,
-  req: RecipeRequest,
-  clientSignal?: AbortSignal
-): Promise<GeneratedRecipe> {
+  messages: ChatMessage[],
+  format: JsonFormat,
+  clientSignal?: AbortSignal,
+  temperature = 0.4
+): Promise<unknown> {
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -216,22 +232,16 @@ export async function generateRecipe(
 
   const base = {
     model: cfg.model,
-    messages: buildMessages(req),
+    messages,
     stream: false,
-    temperature: 0.4,
+    temperature,
     max_tokens: cfg.maxTokens,
   };
 
   try {
     let response = await chat(
       cfg,
-      {
-        ...base,
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'receta', schema: RECIPE_JSON_SCHEMA },
-        },
-      },
+      { ...base, response_format: { type: 'json_schema', json_schema: format } },
       controller.signal
     );
     // Older servers reject json_schema: retry with plain JSON mode.
@@ -252,7 +262,7 @@ export async function generateRecipe(
     if (typeof content !== 'string' || !content.trim()) {
       throw new LlmError('bad_response', 'La IA local devolvió una respuesta vacía.');
     }
-    return normalizeRecipe(extractJson(content), req);
+    return extractJson(content);
   } catch (error: any) {
     if (error instanceof LlmError) throw error;
     if (timedOut) {
@@ -269,4 +279,18 @@ export async function generateRecipe(
     clearTimeout(timer);
     clientSignal?.removeEventListener('abort', onClientAbort);
   }
+}
+
+export async function generateRecipe(
+  cfg: LlmConfig,
+  req: RecipeRequest,
+  clientSignal?: AbortSignal
+): Promise<GeneratedRecipe> {
+  const raw = await requestJson(
+    cfg,
+    buildMessages(req),
+    { name: 'receta', schema: RECIPE_JSON_SCHEMA },
+    clientSignal
+  );
+  return normalizeRecipe(raw, req);
 }

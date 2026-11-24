@@ -220,8 +220,8 @@ server {
         proxy_read_timeout 120s;
     }
 
-    # La IA local tarda minutos: sin búfer ni compresión y con espera larga
-    location = /api/generate-recipe {
+    # La IA local tarda minutos (recetas y "Receta a tu medida"): sin búfer ni compresión y con espera larga
+    location ~ ^/api/(generate-recipe|recipes/partition-steps)\$ {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;

@@ -18,6 +18,7 @@ import {
 } from './src/auth/localAuth.ts';
 import { getLlmConfig, generateRecipe, LlmError, type RecipeRequest } from './src/ai/localLlm.ts';
 import { createLimiter, BusyError } from './src/ai/limiter.ts';
+import { adaptStepsWithLocalAi, parsePartitionStepsRequest } from './src/ai/partitionAi.ts';
 import {
   getUserFullState,
   updateUserPreferences,
@@ -445,6 +446,61 @@ app.post('/api/generate-recipe', optionalAuth, async (req: AuthRequest, res: Res
         error instanceof LlmError ? error.message : 'Error desconocido al generar la receta.';
       console.error('Error generating recipe with the local model:', error);
       record('error', null, message);
+      res.end(JSON.stringify({ error: message }));
+    }
+  } finally {
+    clearInterval(keepAlive);
+    release();
+  }
+});
+
+// "Receta a tu medida": the browser already reduced the ingredients with rules; the local model
+// rewrites the steps for the smaller batch. It shares the queue with recipe generation.
+app.post('/api/recipes/partition-steps', async (req: Request, res: Response) => {
+  const parsed = parsePartitionStepsRequest(req.body);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+  const llm = getLlmConfig();
+  if (!llm) {
+    return res.status(503).json({ error: 'La IA local no está configurada en el servidor.' });
+  }
+
+  const clientAbort = new AbortController();
+  res.on('close', () => {
+    if (!res.writableEnded) clientAbort.abort();
+  });
+
+  let release: () => void;
+  try {
+    release = await llmLimiter.acquire(clientAbort.signal);
+  } catch (error) {
+    if (error instanceof BusyError) {
+      return res.status(429).json({
+        error: 'La IA local está ocupada con otras recetas. Intenta de nuevo en unos minutos.',
+      });
+    }
+    return; // client left while waiting
+  }
+
+  // Same as recipes: headers now and a space every few seconds while the model works.
+  res.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+  const keepAlive = setInterval(() => res.write(' '), KEEPALIVE_MS);
+
+  try {
+    const adapted = await adaptStepsWithLocalAi(llm, parsed.value, clientAbort.signal);
+    res.end(JSON.stringify({ ...adapted, model: llm.model }));
+  } catch (error) {
+    if (error instanceof LlmError && error.code === 'aborted') {
+      res.end();
+    } else {
+      const message =
+        error instanceof LlmError ? error.message : 'Error desconocido al ajustar los pasos.';
+      console.error('Error adapting steps with the local model:', error);
       res.end(JSON.stringify({ error: message }));
     }
   } finally {

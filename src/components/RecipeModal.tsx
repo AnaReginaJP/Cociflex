@@ -14,6 +14,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Recipe, scaleIngredientAmount } from '../utils/recipeMatcher.ts';
+import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
+import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
 
 interface RecipeModalProps {
   recipe: Recipe | null;
@@ -31,6 +33,9 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
   const [currentServings, setCurrentServings] = useState<number>(recipe?.servings ?? 2);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [checkedIngredients, setCheckedIngredients] = useState<string[]>([]);
+  // "Receta a tu medida": reduced version of the recipe and, optionally, steps rewritten by the local AI
+  const [partitionPlan, setPartitionPlan] = useState<PartitionPlan | null>(null);
+  const [aiSteps, setAiSteps] = useState<AiAdaptedSteps | null>(null);
 
   // Kitchen Timer state
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -42,6 +47,8 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
       setCurrentServings(recipe.servings);
       setCompletedSteps([]);
       setCheckedIngredients([]);
+      setPartitionPlan(null);
+      setAiSteps(null);
       setIsTimerRunning(false);
       setTimerSeconds(0);
     }
@@ -114,6 +121,14 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
 
   if (!recipe) return null;
 
+  // A plan changes the view when the recipe is reduced or an optional ingredient is left out
+  const plan =
+    partitionPlan && (!partitionPlan.isFullRecipe || partitionPlan.ingredients.some((i) => i.omitted))
+      ? partitionPlan
+      : null;
+  const reducedPlan = plan && !plan.isFullRecipe ? plan : null;
+  const steps = aiSteps?.steps ?? reducedPlan?.steps ?? recipe.steps;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
       <div className="relative w-full max-w-2xl bg-[#FFF8F6] border border-[#FED7CD] rounded-[32px] shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col text-[#33252A]">
@@ -152,33 +167,45 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
               <div className="flex items-center gap-1.5 font-medium">
                 <Clock className="w-4 h-4 text-[#FF7262]" />
                 <span>
-                  Prep: {recipe.prepTimeMinutes}m | Cocción: {recipe.cookTimeMinutes}m
+                  {reducedPlan
+                    ? `Prep: ≈${reducedPlan.prepTimeMinutes}m | Cocción: ≈${reducedPlan.cookTimeMinutes}m`
+                    : `Prep: ${recipe.prepTimeMinutes}m | Cocción: ${recipe.cookTimeMinutes}m`}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#FF7262]" />
-                <span className="font-semibold">Porciones:</span>
-                <div className="flex items-center gap-1.5 bg-[#FFF8F6] px-2 py-0.5 rounded-xl border border-[#FED7CD]">
-                  <button
-                    onClick={() => setCurrentServings(prev => Math.max(1, prev - 1))}
-                    className="cursor-pointer text-[#FF7262] hover:text-[#FA7268] font-black px-1"
-                    title="Menos porciones"
-                  >
-                    -
-                  </button>
-                  <span className="font-bold text-[#33252A] min-w-[1.2rem] text-center">
-                    {currentServings}
+              {reducedPlan ? (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#FF7262]" />
+                  <span className="font-semibold">Rinde:</span>
+                  <span className="px-2 py-0.5 rounded-xl bg-[#FFF0EB] border border-[#FED7CD] font-bold text-[#33252A]">
+                    {reducedPlan.servingsLabel}
                   </span>
-                  <button
-                    onClick={() => setCurrentServings(prev => prev + 1)}
-                    className="cursor-pointer text-[#FF7262] hover:text-[#FA7268] font-black px-1"
-                    title="Más porciones"
-                  >
-                    +
-                  </button>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#FF7262]" />
+                  <span className="font-semibold">Porciones:</span>
+                  <div className="flex items-center gap-1.5 bg-[#FFF8F6] px-2 py-0.5 rounded-xl border border-[#FED7CD]">
+                    <button
+                      onClick={() => setCurrentServings(prev => Math.max(1, prev - 1))}
+                      className="cursor-pointer text-[#FF7262] hover:text-[#FA7268] font-black px-1"
+                      title="Menos porciones"
+                    >
+                      -
+                    </button>
+                    <span className="font-bold text-[#33252A] min-w-[1.2rem] text-center">
+                      {currentServings}
+                    </span>
+                    <button
+                      onClick={() => setCurrentServings(prev => prev + 1)}
+                      className="cursor-pointer text-[#FF7262] hover:text-[#FA7268] font-black px-1"
+                      title="Más porciones"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-1.5 ml-auto text-[#FF7262] font-semibold text-xs">
                 <ChefHat className="w-4 h-4 text-[#FF7262]" />
@@ -261,12 +288,25 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
             </div>
           </div>
 
+          {/* Not enough of something? Reduce the whole recipe to what you have */}
+          <RecipePartitionPanel
+            key={recipe.id}
+            recipe={recipe}
+            onPlanChange={setPartitionPlan}
+            aiSteps={aiSteps}
+            onAiSteps={setAiSteps}
+            shoppingList={shoppingList}
+            onToggleShoppingItem={onToggleShoppingItem}
+          />
+
           {/* Ingredients list with checkboxes & scaled amounts */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
               <h3 className="text-xs font-black text-[#33252A] uppercase tracking-wider flex items-center gap-1.5">
                 <ChefHat className="w-4 h-4 text-[#FF7262]" />
-                Ingredientes necesarios (calculados para {currentServings} porciones):
+                {reducedPlan
+                  ? `Ingredientes para el ${reducedPlan.percent} % de la receta:`
+                  : `Ingredientes necesarios (calculados para ${currentServings} porciones):`}
               </h3>
               <span className="text-[11px] text-[#8C7E85]">
                 {checkedIngredients.length}/{recipe.ingredients.length} listos
@@ -274,8 +314,13 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {recipe.ingredients.map(ing => {
-                const scaledAmount = scaleIngredientAmount(ing.amount, recipe.servings, currentServings);
+              {recipe.ingredients.map((ing, index) => {
+                const reduced = plan?.ingredients[index];
+                const amountText = reduced?.omitted
+                  ? 'Lo omites'
+                  : reducedPlan
+                    ? `${reducedPlan.ingredients[index].amount} ${reducedPlan.ingredients[index].unit}`
+                    : `${scaleIngredientAmount(ing.amount, recipe.servings, currentServings)} ${ing.unit}`;
                 const isChecked = checkedIngredients.includes(ing.name);
                 const inShopping = shoppingList.includes(ing.name);
 
@@ -301,14 +346,29 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                       >
                         {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                       </div>
-                      <span className={`text-xs ${isChecked ? 'line-through text-[#8C7E85]' : 'font-medium'}`}>
-                        {ing.name}
+                      <span className="min-w-0">
+                        <span className={`block text-xs ${isChecked || reduced?.omitted ? 'line-through text-[#8C7E85]' : 'font-medium'}`}>
+                          {ing.name}
+                          {reduced?.limiting && (
+                            <span className="ml-1.5 px-1.5 py-px rounded-full bg-[#FFEAE4] text-[#FF7262] text-[9px] font-black uppercase tracking-wide">
+                              Lo que tienes
+                            </span>
+                          )}
+                        </span>
+                        {reduced?.note && (
+                          <span className="block text-[10px] text-[#8C7E85] leading-snug">{reduced.note}</span>
+                        )}
                       </span>
                     </button>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#FF7262]">
-                        {scaledAmount} {ing.unit}
+                      <span className="text-right">
+                        <span className="block text-xs font-bold text-[#FF7262] whitespace-nowrap">{amountText}</span>
+                        {reduced?.changed && !reduced.limiting && (
+                          <span className="block text-[10px] text-[#A6979D] line-through whitespace-nowrap">
+                            {prettyAmount(reduced.originalAmount)} {reduced.originalUnit}
+                          </span>
+                        )}
                       </span>
                       <button
                         onClick={() => onToggleShoppingItem(ing.name)}
@@ -336,12 +396,29 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                 Procedimiento Paso a Paso:
               </h3>
               <span className="text-[11px] text-[#8C7E85]">
-                {completedSteps.length}/{recipe.steps.length} completados
+                {completedSteps.length}/{steps.length} completados
               </span>
             </div>
 
+            {aiSteps ? (
+              <p className="mb-2.5 flex items-start gap-1.5 text-[11px] text-[#1E7E50] bg-[#E8F8F0] border border-[#A7F3D0] rounded-xl p-2.5">
+                <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Pasos ajustados por la IA local.</strong> {aiSteps.note}
+                </span>
+              </p>
+            ) : reducedPlan ? (
+              <p className="mb-2.5 flex items-start gap-1.5 text-[11px] text-[#5C4A51] bg-[#FFF0EB] border border-[#FED7CD] rounded-xl p-2.5">
+                <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#FF7262]" />
+                <span>
+                  Versión al {reducedPlan.percent} %: las medidas dentro de los pasos ya están reducidas. Si un paso
+                  menciona piezas (huevos, tortillas), usa las cantidades de la lista de ingredientes.
+                </span>
+              </p>
+            ) : null}
+
             <div className="space-y-2.5">
-              {recipe.steps.map(step => {
+              {steps.map(step => {
                 const isStepDone = completedSteps.includes(step.stepNumber);
 
                 return (
@@ -400,7 +477,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
         {/* Modal Footer */}
         <div className="p-3.5 border-t border-[#FED7CD] bg-[#FFF0EB] flex items-center justify-between">
           <div className="text-xs text-[#7D6F76]">
-            {completedSteps.length === recipe.steps.length ? (
+            {completedSteps.length === steps.length ? (
               <span className="text-[#10B981] font-bold flex items-center gap-1">
                 <Check className="w-4 h-4" /> ¡Platillo listo para disfrutar!
               </span>
