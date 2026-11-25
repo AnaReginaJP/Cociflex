@@ -37,8 +37,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="recipe-grid"]',
   },
   {
-    id: 'pantry-matcher',
+    id: 'rescue-mode',
     stepNumber: 3,
+    title: '¿Algo salió mal al cocinar? Rescátalo',
+    subtitle: 'Modo Salvavidas',
+    description:
+      'Si te quedó muy salado, muy líquido o se cortó la mezcla, abre la receta y entra a "Modo Salvavidas". Cuéntanos qué pasó y qué tienes a la mano: te damos arreglos al instante y, si quieres, la IA local te sugiere un plan. Si la comida huele mal o está cruda, te avisamos que no se rescata.',
+    actionTip: 'Abre cualquier receta, presiona "Modo Salvavidas", elige "Muy salado" y mira los arreglos que salen al instante.',
+    targetTab: 'inicio',
+    targetSelector: '[data-tour="recipe-grid"]',
+  },
+  {
+    id: 'pantry-matcher',
+    stepNumber: 4,
     title: 'Marca tu alacena y calcula coincidencias',
     subtitle: 'Mi Cocina — Motor Cero Desperdicio',
     description:
@@ -49,7 +60,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'ai-recipe-studio',
-    stepNumber: 4,
+    stepNumber: 5,
     title: 'Crea una receta original con IA',
     subtitle: 'Generador Culinario Personalizado',
     description:
@@ -60,7 +71,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'local-ai-ferments',
-    stepNumber: 5,
+    stepNumber: 6,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -71,7 +82,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 6,
+    stepNumber: 7,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Recipe, scaleIngredientAmount } from '../utils/recipeMatcher.ts';
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
+import { RescueModePanel } from './RescueModePanel.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
 
 interface RecipeModalProps {
@@ -22,6 +23,7 @@ interface RecipeModalProps {
   onClose: () => void;
   shoppingList: string[];
   onToggleShoppingItem: (item: string) => void;
+  pantryIngredients: string[];
 }
 
 export const RecipeModal: React.FC<RecipeModalProps> = ({
@@ -29,6 +31,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
   onClose,
   shoppingList,
   onToggleShoppingItem,
+  pantryIngredients,
 }) => {
   const [currentServings, setCurrentServings] = useState<number>(recipe?.servings ?? 2);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -388,6 +391,8 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
             </div>
           </div>
 
+                    {/* Modo Salvavidas: something went wrong while cooking */}
+          <RescueModePanel key={recipe.id} recipe={recipe} pantryIngredients={pantryIngredients} />
           {/* Procedure Steps */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
