@@ -417,7 +417,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
           </div>
 
                     {/* Modo Salvavidas: something went wrong while cooking */}
-          <RescueModePanel key={recipe.id} recipe={recipe} pantryIngredients={pantryIngredients} />
+          <RescueModePanel key={`rescue-${recipe.id}`} recipe={recipe} pantryIngredients={pantryIngredients} />
           {/* Procedure Steps */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
