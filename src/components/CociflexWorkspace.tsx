@@ -36,6 +36,7 @@ import { UserProfileData } from './UserProfileModal.tsx';
 import { LocalAiFermentationAssistant } from './mobile/LocalAiFermentationAssistant.tsx';
 import { ResilientImage } from './ResilientImage.tsx';
 import { WorkspaceTab } from '../utils/walkthroughSteps.ts';
+import { PantryExpiryPanel } from './PantryExpiryPanel.tsx';
 
 interface CociflexWorkspaceProps {
   activeTab: WorkspaceTab;
@@ -727,6 +728,19 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
               <p className="text-xs md:text-sm text-[#7D6F76]">
                 Selecciona lo que tienes en casa para ordenar las mejores recetas disponibles.
               </p>
+            </div>
+
+            <div data-tour="pantry-expiry">
+              <PantryExpiryPanel
+                selectedIngredients={selectedIngredients}
+                recipes={allCatalogRecipes}
+                shoppingList={shoppingList}
+                onToggleShoppingItem={onToggleShoppingItem}
+                onOpenRecipeModal={onOpenRecipeModal}
+                onCreateWithAi={(ingredients) =>
+                  onOpenAiGenerator(ingredients, maxTime || 25, servings, preference)
+                }
+              />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
