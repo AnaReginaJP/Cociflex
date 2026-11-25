@@ -115,7 +115,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'weekly-menu',
-    stepNumber: 7,
+    stepNumber: 10,
     title: 'Planifica tu semana y cuida tu presupuesto',
     subtitle: 'Planificador semanal de menú',
     description:

@@ -68,9 +68,9 @@ test('getNextWalkthroughIndex and getPrevWalkthroughIndex clamp cleanly within b
 });
 
 test('getWalkthroughProgressPercent computes accurate percentage milestones', () => {
-  assert.equal(getWalkthroughProgressPercent(0), 14);
-  assert.equal(getWalkthroughProgressPercent(2), 43);
-  assert.equal(getWalkthroughProgressPercent(6), 100);
+  assert.equal(getWalkthroughProgressPercent(0), 10);
+  assert.equal(getWalkthroughProgressPercent(2), 30);
+  assert.equal(getWalkthroughProgressPercent(9), 100);
 });
 
 test('shouldAutoStartWalkthrough respects query overrides and stored completion flag', () => {
