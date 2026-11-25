@@ -95,6 +95,18 @@ Se conecta a un modelo que corre en **tu propia computadora** (Ollama o LM Studi
 
 Cada vez que un usuario con sesión iniciada genera una receta, el servidor guarda la petición completa: ingredientes, tiempo, comensales, preferencia y notas, además del resultado (la receta en JSON), el estado (`ok`, `fallback` o `error`), el modelo, el mensaje de error si lo hubo y cuánto tardó. En el perfil, el usuario puede ver su historial, abrir una receta anterior o borrar una entrada. Las generaciones sin sesión no se guardan.
 
+### Planificador semanal de menú
+
+En la pestaña **Mandado**, arriba de la lista, el planificador arma un menú de 7 días con una comida principal por día:
+
+1. Escribes cuántas personas son, tu presupuesto semanal, los minutos que tienes cada día y tu preferencia (como de todo, vegetariano o vegano).
+2. El **algoritmo por reglas** (`src/utils/weeklyPlanner.ts`, sin IA generativa) deja solo las recetas que caben en el tiempo y cumplen la dieta (se revisan los ingredientes, no la categoría), y reparte una por día: prefiere las que comparten ingredientes con las ya elegidas, evita repetir y, si el costo se pasa, prefiere las más baratas. No incluye postres ni recetas de fermentación.
+3. Ajusta las cantidades a las personas, suma la lista de compras de la semana (un ingrediente usado en dos días es una sola línea) y estima el costo con los precios aproximados de `src/data/ingredientPrices.ts`. Avisa si te pasas del presupuesto, si algún ingrediente no tiene precio o si con tus filtros se repiten platillos.
+4. **Cambiar este día** reemplaza solo ese día y recalcula lista y costo; los otros seis no cambian.
+5. **Mandar a Mandado** agrega solo los nombres de los ingredientes, sin repetir los que ya estaban.
+
+El menú se guarda en el navegador (`localStorage`); no usa la base de datos ni rutas nuevas del servidor. Los precios son una estimación inicial pendiente de revisar con una fuente (Profeco o tickets del súper).
+
 ## Tecnologías
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Motion, Lucide.
