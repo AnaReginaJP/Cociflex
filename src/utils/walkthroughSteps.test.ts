@@ -10,16 +10,17 @@ import {
   shouldAutoStartWalkthrough,
 } from './walkthroughSteps.ts';
 
-test('WALKTHROUGH_STEPS covers 7 sequential steps across core CociFlex tabs', () => {
-  assert.equal(WALKTHROUGH_STEPS.length, 7);
+test('WALKTHROUGH_STEPS covers 10 sequential steps across core CociFlex tabs', () => {
+  assert.equal(WALKTHROUGH_STEPS.length, 10);
   assert.deepEqual(
     WALKTHROUGH_STEPS.map((s) => s.stepNumber),
-    [1, 2, 3, 4, 5, 6, 7]
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   );
   assert.deepEqual(
     WALKTHROUGH_STEPS.map((s) => s.targetTab),
-    ['inicio', 'inicio', 'cocina', 'cocina', 'fermentos', 'comunidad', 'mandado']
+    ['inicio', 'inicio', 'inicio', 'cocina', 'cocina', 'cocina', 'cocina', 'fermentos', 'comunidad', 'mandado']
   );
+
   assert.equal(new Set(WALKTHROUGH_STEPS.map((s) => s.id)).size, WALKTHROUGH_STEPS.length);
   for (const step of WALKTHROUGH_STEPS) {
     assert.ok(step.title.length > 5);
@@ -40,7 +41,7 @@ test('the recipe-to-fit step introduces "Receta a tu medida" on the recipe grid'
 test('the weekly-menu step introduces the weekly planner in the Mandado tab', () => {
   const step = WALKTHROUGH_STEPS.find((s) => s.id === 'weekly-menu');
   assert.ok(step);
-  assert.equal(step.stepNumber, 7);
+  assert.equal(step.stepNumber, 10);
   assert.equal(step.targetTab, 'mandado');
   assert.equal(step.targetSelector, '[data-tour="weekly-menu"]');
   assert.equal(WALKTHROUGH_STEPS[WALKTHROUGH_STEPS.length - 1].id, 'weekly-menu');
@@ -59,11 +60,11 @@ test('every step points to an anchor that exists in the workspace', () => {
 test('getNextWalkthroughIndex and getPrevWalkthroughIndex clamp cleanly within bounds', () => {
   assert.equal(getPrevWalkthroughIndex(0), 0);
   assert.equal(getNextWalkthroughIndex(0), 1);
-  assert.equal(getNextWalkthroughIndex(5), 6);
-  assert.equal(getNextWalkthroughIndex(6), 6);
-  assert.equal(getPrevWalkthroughIndex(6), 5);
+  assert.equal(getNextWalkthroughIndex(8), 9);
+  assert.equal(getNextWalkthroughIndex(9), 9);
+  assert.equal(getPrevWalkthroughIndex(9), 8);
   assert.equal(clampWalkthroughIndex(-5), 0);
-  assert.equal(clampWalkthroughIndex(99), 6);
+  assert.equal(clampWalkthroughIndex(99), 9);
 });
 
 test('getWalkthroughProgressPercent computes accurate percentage milestones', () => {

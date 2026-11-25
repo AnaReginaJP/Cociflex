@@ -30,9 +30,26 @@ Además, un **recorrido guiado** de 6 pasos explica cada pestaña y la receta a 
 
 Compara los ingredientes del usuario con cada receta sin distinguir acentos ni mayúsculas, ordena las recetas por porcentaje de coincidencia, separa los ingredientes faltantes y escala las cantidades según el número de comensales. No usa IA generativa.
 
+### Despensa con caducidad (cero desperdicio)
+
+En **Mi Cocina**, cada ingrediente marcado en la alacena puede llevar una fecha de caducidad: botones rápidos (hoy, 3 días, 1 semana, 2 semanas) o una fecha elegida. La despensa avisa por color qué caduca hoy o mañana, en 3 días o menos, o está bien. Lo que ya caducó no se propone para cocinar: se avisa que se revise y que, si huele o se ve mal, se tire.
+
+Con lo que está por caducar, la app propone recetas del catálogo que lo aprovechan (con el motor de coincidencia) y el botón **Crear con IA** con esos ingredientes. En cada receta, **Mandar a Mandado lo que falta** agrega solo los ingredientes que no están ya en la lista, sin distinguir acentos ni mayúsculas.
+
+Las fechas las escribe la persona (la app no inventa días de caducidad) y se guardan en el navegador con `localStorage`: no hay tablas ni rutas nuevas. La lógica está en `src/utils/pantryExpiry.ts` y funciona sin IA.
+
 ### Recetas con IA
 
-`POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
+`POST /api/generate-recipe` llama desde el servidor a un modelo compatible con la API de OpenAI: Ollama o LM Studio en la propia computadora, o un servicio en la nube como DeepSeek (`LLM_BASE_URL`, `LLM_MODEL` y, si el servicio la pide, `LLM_API_KEY`). La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
+
+### Sustitución inteligente de ingredientes
+
+Cuando a una receta le falta un ingrediente, la app busca un sustituto que el usuario ya tenga en su despensa y le dice cómo usarlo. Aparece en **Mi Cocina**, debajo de los faltantes de cada receta, y en el detalle de receta, debajo de cada ingrediente que no está en la despensa.
+
+- La base de equivalencias (`src/data/ingredientSubstitutes.ts`) describe la función del ingrediente en el platillo (líquido, grasa, aglutinante, leudante, acidez, dulzor, sabor) y sus sustitutos con proporción, nota de sabor y alérgenos. Las proporciones son aproximadas y las revisa el equipo.
+- El motor (`src/utils/ingredientSubstitution.ts`, sin IA) elige el mejor sustituto que la persona **sí tiene**, convierte la unidad de la receta a la del sustituto y ajusta la cantidad como medida de cocina (`3 cucharadas`, `½ taza`, `90 g`, `1½ cucharadas`). El huevo solo se sustituye por yogur en pasteles, panes y masas.
+- El porcentaje de coincidencia se recalcula sin tocar `recipeMatcher.ts`: solo cuenta como cubierto el faltante que tiene sustituto disponible.
+- En el detalle de la receta, si la base no cubre un caso, el botón **Buscar más opciones con IA** consulta `POST /api/ai/sustitutos` (no aparece para sal, pimienta ni agua). El servidor descarta cualquier propuesta que no esté en la despensa y, si la IA no responde, se queda lo de la base.
 
 ### Receta a tu medida (cuando no te alcanza un ingrediente)
 
@@ -47,6 +64,15 @@ Si tienes un ingrediente pero no la cantidad completa (por ejemplo, la receta ri
    - indica el rendimiento nuevo, tiempos aproximados, consejos (molde u olla más pequeños) y cuánto te falta para la receta completa, con botón para agregarlo a la lista de mandado.
 3. Opcionalmente, **Ajustar pasos con IA local** envía la receta ya reducida a `POST /api/recipes/partition-steps`. El modelo local reescribe los pasos con las nuevas cantidades, tiempos y recipientes. Comparte la cola con las recetas con IA; si la IA local está apagada u ocupada, se quedan los pasos ajustados por reglas.
 
+### Modo Salvavidas (rescate culinario)
+
+Si algo sale mal al cocinar (muy salado, muy picante, muy líquido o espeso, se cortó la mezcla, se quemó un poco, quedó crudo, te pasaste de un ingrediente o te faltó uno), el botón **"Modo Salvavidas"** del detalle de la receta, justo antes del procedimiento, ayuda a rescatar el platillo sin tirarlo:
+
+1. Eliges qué pasó, cuentas los detalles (hasta 500 caracteres), dices en qué paso vas y marcas lo que tienes a la mano (los ingredientes de Mi Cocina ya salen marcados; puedes agregar otros).
+2. Al instante salen los **arreglos por reglas** (`src/utils/cookingRescue.ts`, sin IA): una tabla de soluciones comunes y seguras por problema, con los que puedes hacer con lo que tienes primero.
+3. Opcionalmente, **Pedir ayuda a la IA local** envía la receta, el paso, el problema y tus ingredientes a `POST /api/ai/salvavidas`. El modelo local responde con un diagnóstico, de 3 a 5 pasos y avisos. Comparte la cola con las recetas con IA; si está apagada u ocupada, se quedan los arreglos por reglas. Se descartan los pasos que usan ingredientes que no tienes.
+
+**Seguridad de los alimentos:** el modo es solo para sabor y textura. Si el texto dice que hay moho, mal olor, comida caducada o que estuvo horas fuera del refri, o que quedó muy quemado, responde que no se rescata, y si es carne, pollo, pescado o huevo crudos, que se siga cocinando. En esos casos no se consulta a la IA.
 ### BioAsistente de IA local (fermentos)
 
 Se conecta a un modelo que corre en **tu propia computadora** (Ollama o LM Studio, por defecto `http://localhost:11434` con `llama3.2`). Ofrece:

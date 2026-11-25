@@ -37,8 +37,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="recipe-grid"]',
   },
   {
-    id: 'pantry-matcher',
+    id: 'rescue-mode',
     stepNumber: 3,
+    title: '¿Algo salió mal al cocinar? Rescátalo',
+    subtitle: 'Modo Salvavidas',
+    description:
+      'Si te quedó muy salado, muy líquido o se cortó la mezcla, abre la receta y entra a "Modo Salvavidas". Cuéntanos qué pasó y qué tienes a la mano: te damos arreglos al instante y, si quieres, la IA local te sugiere un plan. Si la comida huele mal o está cruda, te avisamos que no se rescata.',
+    actionTip: 'Abre cualquier receta, presiona "Modo Salvavidas", elige "Muy salado" y mira los arreglos que salen al instante.',
+    targetTab: 'inicio',
+    targetSelector: '[data-tour="recipe-grid"]',
+  },
+  {
+    id: 'pantry-matcher',
+    stepNumber: 4,
     title: 'Marca tu alacena y calcula coincidencias',
     subtitle: 'Mi Cocina — Motor Cero Desperdicio',
     description:
@@ -48,8 +59,30 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="pantry-engine"]',
   },
   {
+    id: 'pantry-expiry',
+    stepNumber: 5,
+    title: 'Anota qué caduca y salva tu comida',
+    subtitle: 'Mi Cocina — Despensa con caducidad',
+    description:
+      'Registra cuándo caduca lo que tienes. Verás alertas de color (hoy o mañana, en 3 días o menos, o bien) y recetas para aprovechar lo que está por echarse a perder, con un botón para mandar a Mandado solo lo que te falta.',
+    actionTip: 'Marca un ingrediente en tu alacena, elige "Hoy" en su fecha y mira qué platillos te propone CociFlex. Revisa siempre la fecha de la etiqueta.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="pantry-expiry"]',
+  },
+  {
+    id: 'ingredient-substitutes',
+    stepNumber: 6,
+    title: 'Sustituye lo que te falta con lo que ya tienes',
+    subtitle: 'Sustitución inteligente de ingredientes',
+    description:
+      'Cuando una receta pide algo que no tienes, CociFlex busca un sustituto en tu despensa y te dice cómo ajustar la cantidad. El porcentaje de la receta sube y dejas de comprar lo que no necesitas.',
+    actionTip: 'Abre el Pan Francés Dorado, quita la leche de tu despensa y deja el yogur natural: verás la sugerencia y el porcentaje con sustituciones.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="recipe-results"]',
+  },
+  {
     id: 'ai-recipe-studio',
-    stepNumber: 4,
+    stepNumber: 7,
     title: 'Crea una receta original con IA',
     subtitle: 'Generador Culinario Personalizado',
     description:
@@ -60,7 +93,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'local-ai-ferments',
-    stepNumber: 5,
+    stepNumber: 8,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -71,7 +104,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 6,
+    stepNumber: 9,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:

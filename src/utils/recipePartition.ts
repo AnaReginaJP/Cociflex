@@ -120,6 +120,21 @@ export function compatibleUnits(recipeUnit: string): UnitOption[] {
   return [own, ...equivalents.map((d) => ({ value: d.key, label: d.plural }))];
 }
 
+/**
+ * Converts an amount between compatible units (volume or mass).
+ * Returns null when the units cannot be converted, e.g. cups to pieces.
+ */
+export function convertAmount(value: number, fromUnit: string, toUnit: string): number | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  const from = parseUnit(fromUnit);
+  const to = parseUnit(toUnit);
+  if (!from.def || !to.def) return null;
+  if (from.def.key === to.def.key) return value;
+  if (from.def.family !== to.def.family) return null;
+  if (from.def.family === 'count') return null;
+  return (value * from.def.size) / to.def.size;
+}
+
 // ---------- Amounts ----------
 
 const UNICODE_FRACTIONS: Record<string, string> = {

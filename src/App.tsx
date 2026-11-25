@@ -379,6 +379,7 @@ const CociflexAppContent: React.FC = () => {
           onClose={() => setActiveRecipe(null)}
           shoppingList={shoppingList}
           onToggleShoppingItem={toggleShoppingItem}
+          pantryIngredients={selectedIngredients}
         />
       )}
 
