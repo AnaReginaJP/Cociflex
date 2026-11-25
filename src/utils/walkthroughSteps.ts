@@ -37,8 +37,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="recipe-grid"]',
   },
   {
-    id: 'pantry-matcher',
+    id: 'rescue-mode',
     stepNumber: 3,
+    title: '¿Algo salió mal al cocinar? Rescátalo',
+    subtitle: 'Modo Salvavidas',
+    description:
+      'Si te quedó muy salado, muy líquido o se cortó la mezcla, abre la receta y entra a "Modo Salvavidas". Cuéntanos qué pasó y qué tienes a la mano: te damos arreglos al instante y, si quieres, la IA local te sugiere un plan. Si la comida huele mal o está cruda, te avisamos que no se rescata.',
+    actionTip: 'Abre cualquier receta, presiona "Modo Salvavidas", elige "Muy salado" y mira los arreglos que salen al instante.',
+    targetTab: 'inicio',
+    targetSelector: '[data-tour="recipe-grid"]',
+  },
+  {
+    id: 'pantry-matcher',
+    stepNumber: 4,
     title: 'Marca tu alacena y calcula coincidencias',
     subtitle: 'Mi Cocina — Motor Cero Desperdicio',
     description:
@@ -49,7 +60,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'pantry-expiry',
-    stepNumber: 4,
+    stepNumber: 5,
     title: 'Anota qué caduca y salva tu comida',
     subtitle: 'Mi Cocina — Despensa con caducidad',
     description:
@@ -57,17 +68,6 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     actionTip: 'Marca un ingrediente en tu alacena, elige "Hoy" en su fecha y mira qué platillos te propone CociFlex. Revisa siempre la fecha de la etiqueta.',
     targetTab: 'cocina',
     targetSelector: '[data-tour="pantry-expiry"]',
-  },
-  {
-    id: 'ai-recipe-studio',
-    stepNumber: 5,
-    title: 'Crea una receta original con IA',
-    subtitle: 'Generador Culinario Personalizado',
-    description:
-      '¿Tus ingredientes no coinciden con una receta clásica? Usa "Crear con IA" para inventar un platillo a medida respetando tu tiempo, porciones y dieta.',
-    actionTip: 'Presiona el botón "Crear Receta con IA" cuando quieras improvisar sin desperdiciar comida.',
-    targetTab: 'cocina',
-    targetSelector: '[data-tour="ai-cta"]',
   },
   {
     id: 'ingredient-substitutes',
@@ -81,8 +81,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="recipe-results"]',
   },
   {
-    id: 'local-ai-ferments',
+    id: 'ai-recipe-studio',
     stepNumber: 7,
+    title: 'Crea una receta original con IA',
+    subtitle: 'Generador Culinario Personalizado',
+    description:
+      '¿Tus ingredientes no coinciden con una receta clásica? Usa "Crear con IA" para inventar un platillo a medida respetando tu tiempo, porciones y dieta.',
+    actionTip: 'Presiona el botón "Crear Receta con IA" cuando quieras improvisar sin desperdiciar comida.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="ai-cta"]',
+  },
+  {
+    id: 'local-ai-ferments',
+    stepNumber: 8,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -93,7 +104,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 8,
+    stepNumber: 9,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:

@@ -64,6 +64,15 @@ Si tienes un ingrediente pero no la cantidad completa (por ejemplo, la receta ri
    - indica el rendimiento nuevo, tiempos aproximados, consejos (molde u olla más pequeños) y cuánto te falta para la receta completa, con botón para agregarlo a la lista de mandado.
 3. Opcionalmente, **Ajustar pasos con IA local** envía la receta ya reducida a `POST /api/recipes/partition-steps`. El modelo local reescribe los pasos con las nuevas cantidades, tiempos y recipientes. Comparte la cola con las recetas con IA; si la IA local está apagada u ocupada, se quedan los pasos ajustados por reglas.
 
+### Modo Salvavidas (rescate culinario)
+
+Si algo sale mal al cocinar (muy salado, muy picante, muy líquido o espeso, se cortó la mezcla, se quemó un poco, quedó crudo, te pasaste de un ingrediente o te faltó uno), el botón **"Modo Salvavidas"** del detalle de la receta, justo antes del procedimiento, ayuda a rescatar el platillo sin tirarlo:
+
+1. Eliges qué pasó, cuentas los detalles (hasta 500 caracteres), dices en qué paso vas y marcas lo que tienes a la mano (los ingredientes de Mi Cocina ya salen marcados; puedes agregar otros).
+2. Al instante salen los **arreglos por reglas** (`src/utils/cookingRescue.ts`, sin IA): una tabla de soluciones comunes y seguras por problema, con los que puedes hacer con lo que tienes primero.
+3. Opcionalmente, **Pedir ayuda a la IA local** envía la receta, el paso, el problema y tus ingredientes a `POST /api/ai/salvavidas`. El modelo local responde con un diagnóstico, de 3 a 5 pasos y avisos. Comparte la cola con las recetas con IA; si está apagada u ocupada, se quedan los arreglos por reglas. Se descartan los pasos que usan ingredientes que no tienes.
+
+**Seguridad de los alimentos:** el modo es solo para sabor y textura. Si el texto dice que hay moho, mal olor, comida caducada o que estuvo horas fuera del refri, o que quedó muy quemado, responde que no se rescata, y si es carne, pollo, pescado o huevo crudos, que se siga cocinando. En esos casos no se consulta a la IA.
 ### BioAsistente de IA local (fermentos)
 
 Se conecta a un modelo que corre en **tu propia computadora** (Ollama o LM Studio, por defecto `http://localhost:11434` con `llama3.2`). Ofrece:

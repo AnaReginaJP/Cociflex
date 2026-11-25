@@ -15,8 +15,7 @@ import {
 } from 'lucide-react';
 import { Recipe, scaleIngredientAmount, isIngredientMatched } from '../utils/recipeMatcher.ts';
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
-import { findSubstitutions, buildSubstitutionContext, missingWithoutSubstitute } from '../utils/ingredientSubstitution.ts';
-import { SubstitutionHint, SubstitutionAiPanel } from './SubstitutionHint.tsx';
+import { RescueModePanel } from './RescueModePanel.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
 
 interface RecipeModalProps {
@@ -413,6 +412,8 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
             )}
           </div>
 
+                    {/* Modo Salvavidas: something went wrong while cooking */}
+          <RescueModePanel key={recipe.id} recipe={recipe} pantryIngredients={pantryIngredients} />
           {/* Procedure Steps */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
