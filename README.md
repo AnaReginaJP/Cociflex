@@ -30,6 +30,14 @@ Además, un **recorrido guiado** de 6 pasos explica cada pestaña y la receta a 
 
 Compara los ingredientes del usuario con cada receta sin distinguir acentos ni mayúsculas, ordena las recetas por porcentaje de coincidencia, separa los ingredientes faltantes y escala las cantidades según el número de comensales. No usa IA generativa.
 
+### Despensa con caducidad (cero desperdicio)
+
+En **Mi Cocina**, cada ingrediente marcado en la alacena puede llevar una fecha de caducidad: botones rápidos (hoy, 3 días, 1 semana, 2 semanas) o una fecha elegida. La despensa avisa por color qué caduca hoy o mañana, en 3 días o menos, o está bien. Lo que ya caducó no se propone para cocinar: se avisa que se revise y que, si huele o se ve mal, se tire.
+
+Con lo que está por caducar, la app propone recetas del catálogo que lo aprovechan (con el motor de coincidencia) y el botón **Crear con IA** con esos ingredientes. En cada receta, **Mandar a Mandado lo que falta** agrega solo los ingredientes que no están ya en la lista, sin distinguir acentos ni mayúsculas.
+
+Las fechas las escribe la persona (la app no inventa días de caducidad) y se guardan en el navegador con `localStorage`: no hay tablas ni rutas nuevas. La lógica está en `src/utils/pantryExpiry.ts` y funciona sin IA.
+
 ### Recetas con IA
 
 `POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.

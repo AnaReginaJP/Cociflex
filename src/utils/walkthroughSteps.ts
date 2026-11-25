@@ -59,8 +59,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="pantry-engine"]',
   },
   {
-    id: 'ai-recipe-studio',
+    id: 'pantry-expiry',
     stepNumber: 5,
+    title: 'Anota qué caduca y salva tu comida',
+    subtitle: 'Mi Cocina — Despensa con caducidad',
+    description:
+      'Registra cuándo caduca lo que tienes. Verás alertas de color (hoy o mañana, en 3 días o menos, o bien) y recetas para aprovechar lo que está por echarse a perder, con un botón para mandar a Mandado solo lo que te falta.',
+    actionTip: 'Marca un ingrediente en tu alacena, elige "Hoy" en su fecha y mira qué platillos te propone CociFlex. Revisa siempre la fecha de la etiqueta.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="pantry-expiry"]',
+  },
+  {
+    id: 'ai-recipe-studio',
+    stepNumber: 6,
     title: 'Crea una receta original con IA',
     subtitle: 'Generador Culinario Personalizado',
     description:
@@ -71,7 +82,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'local-ai-ferments',
-    stepNumber: 6,
+    stepNumber: 7,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -82,7 +93,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 7,
+    stepNumber: 8,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:
