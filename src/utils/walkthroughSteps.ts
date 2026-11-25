@@ -70,8 +70,19 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetSelector: '[data-tour="pantry-expiry"]',
   },
   {
-    id: 'ai-recipe-studio',
+    id: 'ingredient-substitutes',
     stepNumber: 6,
+    title: 'Sustituye lo que te falta con lo que ya tienes',
+    subtitle: 'Sustitución inteligente de ingredientes',
+    description:
+      'Cuando una receta pide algo que no tienes, CociFlex busca un sustituto en tu despensa y te dice cómo ajustar la cantidad. El porcentaje de la receta sube y dejas de comprar lo que no necesitas.',
+    actionTip: 'Abre el Pan Francés Dorado, quita la leche de tu despensa y deja el yogur natural: verás la sugerencia y el porcentaje con sustituciones.',
+    targetTab: 'cocina',
+    targetSelector: '[data-tour="recipe-results"]',
+  },
+  {
+    id: 'ai-recipe-studio',
+    stepNumber: 7,
     title: 'Crea una receta original con IA',
     subtitle: 'Generador Culinario Personalizado',
     description:
@@ -82,7 +93,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'local-ai-ferments',
-    stepNumber: 7,
+    stepNumber: 8,
     title: 'Fermenta con ciencia e IA local privada',
     subtitle: 'Fermentos y BioAsistente',
     description:
@@ -93,7 +104,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     id: 'community-and-mandado',
-    stepNumber: 8,
+    stepNumber: 9,
     title: 'Valida recetas en comunidad y arma tu mandado',
     subtitle: 'Comunidad Certificada (3 Likes) & Mandado',
     description:

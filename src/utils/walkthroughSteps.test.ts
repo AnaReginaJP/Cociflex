@@ -10,15 +10,15 @@ import {
   shouldAutoStartWalkthrough,
 } from './walkthroughSteps.ts';
 
-test('WALKTHROUGH_STEPS covers 8 sequential steps across core CociFlex tabs', () => {
-  assert.equal(WALKTHROUGH_STEPS.length, 8);
+test('WALKTHROUGH_STEPS covers 9 sequential steps across core CociFlex tabs', () => {
+  assert.equal(WALKTHROUGH_STEPS.length, 9);
   assert.deepEqual(
     WALKTHROUGH_STEPS.map((s) => s.stepNumber),
-    [1, 2, 3, 4, 5, 6, 7, 8]
+    [1, 2, 3, 4, 5, 6, 7, 8, 9]
   );
   assert.deepEqual(
     WALKTHROUGH_STEPS.map((s) => s.targetTab),
-    ['inicio', 'inicio', 'inicio', 'cocina', 'cocina', 'cocina', 'fermentos', 'comunidad']
+    ['inicio', 'inicio', 'inicio', 'cocina', 'cocina', 'cocina', 'cocina', 'fermentos', 'comunidad']
   );
   assert.equal(new Set(WALKTHROUGH_STEPS.map((s) => s.id)).size, WALKTHROUGH_STEPS.length);
   for (const step of WALKTHROUGH_STEPS) {
@@ -58,6 +58,16 @@ test('the pantry-expiry step comes right after pantry-matcher and points to its 
   assert.match(step.description, /caduca/);
 });
 
+test('the ingredient-substitutes step explains substitutions in Mi Cocina', () => {
+  const step = WALKTHROUGH_STEPS.find((s) => s.id === 'ingredient-substitutes');
+  assert.ok(step);
+  assert.equal(step.stepNumber, 6);
+  assert.equal(step.targetTab, 'cocina');
+  assert.equal(step.targetSelector, '[data-tour="recipe-results"]');
+  assert.match(step.description, /sustituto/);
+  assert.match(step.actionTip, /Pan Francés Dorado/);
+});
+
 test('every step points to an anchor that exists in the workspace', () => {
   const workspace = readFileSync(new URL('../components/CociflexWorkspace.tsx', import.meta.url), 'utf-8');
   for (const step of WALKTHROUGH_STEPS) {
@@ -70,17 +80,17 @@ test('every step points to an anchor that exists in the workspace', () => {
 test('getNextWalkthroughIndex and getPrevWalkthroughIndex clamp cleanly within bounds', () => {
   assert.equal(getPrevWalkthroughIndex(0), 0);
   assert.equal(getNextWalkthroughIndex(0), 1);
-  assert.equal(getNextWalkthroughIndex(6), 7);
-  assert.equal(getNextWalkthroughIndex(7), 7);
-  assert.equal(getPrevWalkthroughIndex(7), 6);
+  assert.equal(getNextWalkthroughIndex(7), 8);
+  assert.equal(getNextWalkthroughIndex(8), 8);
+  assert.equal(getPrevWalkthroughIndex(8), 7);
   assert.equal(clampWalkthroughIndex(-5), 0);
-  assert.equal(clampWalkthroughIndex(99), 7);
+  assert.equal(clampWalkthroughIndex(99), 8);
 });
 
 test('getWalkthroughProgressPercent computes accurate percentage milestones', () => {
-  assert.equal(getWalkthroughProgressPercent(0), 13);
-  assert.equal(getWalkthroughProgressPercent(2), 38);
-  assert.equal(getWalkthroughProgressPercent(7), 100);
+  assert.equal(getWalkthroughProgressPercent(0), 11);
+  assert.equal(getWalkthroughProgressPercent(2), 33);
+  assert.equal(getWalkthroughProgressPercent(8), 100);
 });
 
 test('shouldAutoStartWalkthrough respects query overrides and stored completion flag', () => {

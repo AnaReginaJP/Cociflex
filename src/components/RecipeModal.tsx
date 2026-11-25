@@ -13,7 +13,7 @@ import {
   Lightbulb,
   CheckCircle2
 } from 'lucide-react';
-import { Recipe, scaleIngredientAmount } from '../utils/recipeMatcher.ts';
+import { Recipe, scaleIngredientAmount, isIngredientMatched } from '../utils/recipeMatcher.ts';
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
 import { RescueModePanel } from './RescueModePanel.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
@@ -131,6 +131,13 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
       : null;
   const reducedPlan = plan && !plan.isFullRecipe ? plan : null;
   const steps = aiSteps?.steps ?? reducedPlan?.steps ?? recipe.steps;
+
+  // Sustituciones: contexto del platillo para no proponer yogur donde el huevo es el protagonista.
+  const substitutionContext = buildSubstitutionContext(recipe);
+  const missingFromPantry = recipe.ingredients.filter(
+    (ing) => !isIngredientMatched(ing.name, pantryIngredients)
+  );
+  const aiMissing = missingWithoutSubstitute(missingFromPantry, pantryIngredients, substitutionContext);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
@@ -326,6 +333,9 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                     : `${scaleIngredientAmount(ing.amount, recipe.servings, currentServings)} ${ing.unit}`;
                 const isChecked = checkedIngredients.includes(ing.name);
                 const inShopping = shoppingList.includes(ing.name);
+                const suggestion = isIngredientMatched(ing.name, pantryIngredients)
+                  ? undefined
+                  : findSubstitutions([ing], pantryIngredients, substitutionContext)[0];
 
                 return (
                   <div
@@ -361,6 +371,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                         {reduced?.note && (
                           <span className="block text-[10px] text-[#8C7E85] leading-snug">{reduced.note}</span>
                         )}
+                        {suggestion && <SubstitutionHint suggestion={suggestion} compact />}
                       </span>
                     </button>
 
@@ -389,6 +400,16 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                 );
               })}
             </div>
+
+            {pantryIngredients.length > 0 && aiMissing.length > 0 && (
+              <div className="pt-2">
+                <SubstitutionAiPanel
+                  recipeTitle={recipe.title}
+                  missing={aiMissing}
+                  pantry={pantryIngredients}
+                />
+              </div>
+            )}
           </div>
 
                     {/* Modo Salvavidas: something went wrong while cooking */}

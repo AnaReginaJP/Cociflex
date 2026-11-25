@@ -24,6 +24,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Recipe, getRankedRecipes } from '../utils/recipeMatcher.ts';
+import { matchWithSubstitutions } from '../utils/ingredientSubstitution.ts';
+import { SubstitutionHint } from './SubstitutionHint.tsx';
 import { INITIAL_RECIPES, COMMON_PANTRY_INGREDIENTS } from '../data/recipesData.ts';
 import { FERMENTATION_GUIDES } from '../data/fermentationData.ts';
 import {
@@ -885,7 +887,7 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
               </section>
 
               {/* Right Column: Ranked Match Results */}
-              <section className="lg:col-span-7 space-y-4">
+              <section data-tour="recipe-results" className="lg:col-span-7 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-display text-sm md:text-base font-extrabold text-[#33252A]">
                     Recetas por Coincidencia
@@ -899,6 +901,7 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                   {rankedResults.map((result) => {
                     const totalMins =
                       result.recipe.prepTimeMinutes + result.recipe.cookTimeMinutes;
+                    const substitution = matchWithSubstitutions(result, selectedIngredients);
                     return (
                       <article
                         key={result.recipe.id}
@@ -962,6 +965,18 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                                   );
                                 })}
                               </div>
+
+                              {substitution.suggestions.length > 0 && (
+                                <div className="space-y-1.5 pt-1.5">
+                                  {substitution.suggestions.map((suggestion) => (
+                                    <SubstitutionHint key={suggestion.missing} suggestion={suggestion} compact />
+                                  ))}
+                                  <p className="text-[10px] font-bold text-[#1E7E50]">
+                                    Coincidencia con sustituciones: {substitution.matchPercentage}% (antes{' '}
+                                    {result.matchPercentage}%)
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
