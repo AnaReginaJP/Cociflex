@@ -38,6 +38,37 @@ test('the recipe-to-fit step introduces "Receta a tu medida" on the recipe grid'
   assert.match(step.description, /No te alcanza algún ingrediente/);
 });
 
+test('the rescue-mode step introduces "Modo Salvavidas" right after recipe-to-fit', () => {
+  const index = WALKTHROUGH_STEPS.findIndex((s) => s.id === 'rescue-mode');
+  assert.equal(index, 2);
+  assert.equal(WALKTHROUGH_STEPS[index - 1].id, 'recipe-to-fit');
+  const step = WALKTHROUGH_STEPS[index];
+  assert.equal(step.stepNumber, 3);
+  assert.equal(step.targetTab, 'inicio');
+  assert.equal(step.targetSelector, '[data-tour="recipe-grid"]');
+  assert.match(step.description, /Modo Salvavidas/);
+});
+
+test('the pantry-expiry step comes right after pantry-matcher and points to its panel', () => {
+  const index = WALKTHROUGH_STEPS.findIndex((s) => s.id === 'pantry-expiry');
+  assert.equal(index, WALKTHROUGH_STEPS.findIndex((s) => s.id === 'pantry-matcher') + 1);
+  const step = WALKTHROUGH_STEPS[index];
+  assert.equal(step.stepNumber, 5);
+  assert.equal(step.targetTab, 'cocina');
+  assert.equal(step.targetSelector, '[data-tour="pantry-expiry"]');
+  assert.match(step.description, /caduca/);
+});
+
+test('the ingredient-substitutes step explains substitutions in Mi Cocina', () => {
+  const step = WALKTHROUGH_STEPS.find((s) => s.id === 'ingredient-substitutes');
+  assert.ok(step);
+  assert.equal(step.stepNumber, 6);
+  assert.equal(step.targetTab, 'cocina');
+  assert.equal(step.targetSelector, '[data-tour="recipe-results"]');
+  assert.match(step.description, /sustituto/);
+  assert.match(step.actionTip, /Pan Francés Dorado/);
+});
+
 test('the weekly-menu step introduces the weekly planner in the Mandado tab', () => {
   const step = WALKTHROUGH_STEPS.find((s) => s.id === 'weekly-menu');
   assert.ok(step);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   DAY_NAMES,
   buildShoppingList,
+  shoppingQuantity,
   buildWeeklyPlan,
   displayAmount,
   isVegan,
@@ -223,7 +224,8 @@ test('an ingredient used on two days is one line with the added amount and cost'
   assert.ok(used.length >= 2);
   assert.deepEqual(jitomate.days, used.map((d) => d.day));
   const expectedAmount = used.reduce((sum, d) => sum + d.ingredients.find((i) => i.name === 'Jitomate')!.amount!, 0);
-  assert.equal(jitomate.quantity, `${displayAmount(expectedAmount, 'piezas')} piezas`);
+  assert.equal(jitomate.quantity, shoppingQuantity(expectedAmount, 'pieza'));
+  assert.match(jitomate.quantity, /^\d+ piezas/); // you buy whole tomatoes
   assert.equal(plan.shopping.filter((l) => l.name === 'Jitomate').length, 1);
 });
 
@@ -238,8 +240,19 @@ test('buildShoppingList adds fractions and keeps different units apart', () => {
   // The week repeats both dishes; take one day of each to check the addition.
   const oneOfEach = ['x', 'y'].map((id) => plan.days.find((d) => d.recipeId === id)!);
   const list = buildShoppingList(oneOfEach);
-  assert.equal(list.find((l) => l.name === 'Cebolla')?.quantity, '¾ pieza');
+  assert.equal(list.find((l) => l.name === 'Cebolla')?.quantity, '1 pieza (usas ¾)');
   assert.equal(list.find((l) => l.name === 'Leche entera')?.quantity.includes(' + '), true);
+});
+
+test('the shopping list rounds up what is bought whole and keeps the amount used', () => {
+  assert.equal(shoppingQuantity(4 + 1 / 3, 'diente'), '5 dientes (usas 4⅓)');
+  assert.equal(shoppingQuantity(1.75, 'pieza'), '2 piezas (usas 1¾)');
+  assert.equal(shoppingQuantity(0.5, 'pieza'), '1 pieza (usas ½)');
+  assert.equal(shoppingQuantity(12, 'pieza'), '12 piezas');
+  assert.equal(shoppingQuantity((0.1 + 0.2) * 10, 'pieza'), '3 piezas'); // floating-point noise is not a fourth piece
+  // Measured units are not rounded up
+  assert.equal(shoppingQuantity(1.5, 'taza'), '1½ tazas');
+  assert.equal(shoppingQuantity(363, 'g'), '363 g');
 });
 
 test('an ingredient with no price makes the cost partial and says so', () => {
