@@ -13,8 +13,10 @@ import {
   Lightbulb,
   CheckCircle2
 } from 'lucide-react';
-import { Recipe, scaleIngredientAmount } from '../utils/recipeMatcher.ts';
+import { Recipe, scaleIngredientAmount, isIngredientMatched } from '../utils/recipeMatcher.ts';
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
+import { findSubstitutions } from '../utils/ingredientSubstitution.ts';
+import { SubstitutionHint } from './SubstitutionHint.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
 
 interface RecipeModalProps {
@@ -22,6 +24,7 @@ interface RecipeModalProps {
   onClose: () => void;
   shoppingList: string[];
   onToggleShoppingItem: (item: string) => void;
+  pantryIngredients: string[];
 }
 
 export const RecipeModal: React.FC<RecipeModalProps> = ({
@@ -29,6 +32,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
   onClose,
   shoppingList,
   onToggleShoppingItem,
+  pantryIngredients,
 }) => {
   const [currentServings, setCurrentServings] = useState<number>(recipe?.servings ?? 2);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -323,6 +327,9 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                     : `${scaleIngredientAmount(ing.amount, recipe.servings, currentServings)} ${ing.unit}`;
                 const isChecked = checkedIngredients.includes(ing.name);
                 const inShopping = shoppingList.includes(ing.name);
+                const suggestion = isIngredientMatched(ing.name, pantryIngredients)
+                  ? undefined
+                  : findSubstitutions([ing], pantryIngredients)[0];
 
                 return (
                   <div
@@ -358,6 +365,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                         {reduced?.note && (
                           <span className="block text-[10px] text-[#8C7E85] leading-snug">{reduced.note}</span>
                         )}
+                        {suggestion && <SubstitutionHint suggestion={suggestion} compact />}
                       </span>
                     </button>
 
