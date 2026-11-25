@@ -35,6 +35,7 @@ import { GENERATED_IMAGES } from '../data/generatedImages.ts';
 import { UserProfileData } from './UserProfileModal.tsx';
 import { LocalAiFermentationAssistant } from './mobile/LocalAiFermentationAssistant.tsx';
 import { ResilientImage } from './ResilientImage.tsx';
+import { WeeklyMenuPlanner } from './WeeklyMenuPlanner.tsx';
 import { WorkspaceTab } from '../utils/walkthroughSteps.ts';
 
 interface CociflexWorkspaceProps {
@@ -1319,6 +1320,17 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                 Insumos faltantes detectados automáticamente por el motor de recetas o añadidos manualmente por ti.
               </p>
             </div>
+
+            <section data-tour="weekly-menu">
+              <WeeklyMenuPlanner
+                recipes={allCatalogRecipes}
+                shoppingList={shoppingList}
+                onToggleShoppingItem={onToggleShoppingItem}
+                onOpenRecipeModal={onOpenRecipeModal}
+                defaultDiet={userProfile.dietaryPreference}
+              />
+            </section>
+
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7 space-y-4">

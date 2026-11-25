@@ -80,6 +80,17 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     targetTab: 'comunidad',
     targetSelector: '[data-tour="community-mandado"]',
   },
+  {
+    id: 'weekly-menu',
+    stepNumber: 7,
+    title: 'Planifica tu semana y cuida tu presupuesto',
+    subtitle: 'Planificador semanal de menú',
+    description:
+      'Dile cuántas personas son, cuánto quieres gastar y cuánto tiempo tienes cada día. CociFlex arma un menú de 7 días que reutiliza ingredientes, calcula el costo aproximado y te da la lista de compras de la semana.',
+    actionTip: 'Prueba con 2 personas, $800 y 30 minutos; luego toca "Cambiar este día" en el jueves.',
+    targetTab: 'mandado',
+    targetSelector: '[data-tour="weekly-menu"]',
+  },
 ];
 
 export function clampWalkthroughIndex(index: number, total: number = WALKTHROUGH_STEPS.length): number {
