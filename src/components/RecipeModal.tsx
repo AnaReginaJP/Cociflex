@@ -17,6 +17,8 @@ import { Recipe, scaleIngredientAmount, isIngredientMatched } from '../utils/rec
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
 import { RescueModePanel } from './RescueModePanel.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
+import { findSubstitutions, buildSubstitutionContext, missingWithoutSubstitute } from '../utils/ingredientSubstitution.ts';
+import { SubstitutionHint, SubstitutionAiPanel } from './SubstitutionHint.tsx';
 
 interface RecipeModalProps {
   recipe: Recipe | null;
@@ -333,9 +335,11 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                     : `${scaleIngredientAmount(ing.amount, recipe.servings, currentServings)} ${ing.unit}`;
                 const isChecked = checkedIngredients.includes(ing.name);
                 const inShopping = shoppingList.includes(ing.name);
-                const suggestion = isIngredientMatched(ing.name, pantryIngredients)
-                  ? undefined
-                  : findSubstitutions([ing], pantryIngredients, substitutionContext)[0];
+                // Si "Receta a tu medida" ya lo omitió, no tiene sentido proponer sustituirlo.
+                const suggestion =
+                  isIngredientMatched(ing.name, pantryIngredients) || reduced?.omitted
+                    ? undefined
+                    : findSubstitutions([ing], pantryIngredients, substitutionContext)[0];
 
                 return (
                   <div

@@ -40,7 +40,7 @@ Las fechas las escribe la persona (la app no inventa días de caducidad) y se gu
 
 ### Recetas con IA
 
-`POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
+`POST /api/generate-recipe` llama desde el servidor a un modelo compatible con la API de OpenAI: Ollama o LM Studio en la propia computadora, o un servicio en la nube como DeepSeek (`LLM_BASE_URL`, `LLM_MODEL` y, si el servicio la pide, `LLM_API_KEY`). La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
 
 ### Sustitución inteligente de ingredientes
 

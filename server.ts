@@ -90,6 +90,27 @@ function tooManyAttempts(req: Request): boolean {
   return entry.count > AUTH_MAX_ATTEMPTS;
 }
 
+// The AI endpoints are public (no session needed), so each IP gets a cap: one person cannot
+// spend the whole DeepSeek/Ollama quota. 30 requests every 15 minutes is plenty for cooking.
+const AI_WINDOW_MS = 15 * 60 * 1000;
+const AI_MAX_REQUESTS = 30;
+const aiRequests = new Map<string, { count: number; resetAt: number }>();
+
+function tooManyAiRequests(req: Request): boolean {
+  const key = req.ip || 'unknown';
+  const now = Date.now();
+  const entry = aiRequests.get(key);
+  if (!entry || entry.resetAt < now) {
+    aiRequests.set(key, { count: 1, resetAt: now + AI_WINDOW_MS });
+    if (aiRequests.size > 5000) {
+      for (const [k, v] of aiRequests) if (v.resetAt < now) aiRequests.delete(k);
+    }
+    return false;
+  }
+  entry.count++;
+  return entry.count > AI_MAX_REQUESTS;
+}
+
 const publicUser = (user: SessionUser) => ({ uid: user.uid, email: user.email, displayName: user.name });
 
 async function startSession(req: Request, res: Response, user: SessionUser) {
@@ -459,6 +480,9 @@ app.post('/api/generate-recipe', optionalAuth, async (req: AuthRequest, res: Res
 // "Sustitución inteligente": optional AI help for missing ingredients that the base does not
 // cover. The server re-checks the answer against the pantry before returning it.
 app.post('/api/ai/sustitutos', async (req: Request, res: Response) => {
+  if (tooManyAiRequests(req)) {
+    return res.status(429).json({ error: 'Demasiadas consultas a la IA desde esta conexión. Espera unos minutos.' });
+  }
   const parsed = parseSubstitutionRequest(req.body);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
 
@@ -513,6 +537,9 @@ app.post('/api/ai/sustitutos', async (req: Request, res: Response) => {
 // "Receta a tu medida": the browser already reduced the ingredients with rules; the local model
 // rewrites the steps for the smaller batch. It shares the queue with recipe generation.
 app.post('/api/recipes/partition-steps', async (req: Request, res: Response) => {
+  if (tooManyAiRequests(req)) {
+    return res.status(429).json({ error: 'Demasiadas consultas a la IA desde esta conexión. Espera unos minutos.' });
+  }
   const parsed = parsePartitionStepsRequest(req.body);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
 
