@@ -24,8 +24,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Recipe, getRankedRecipes } from '../utils/recipeMatcher.ts';
-import { matchWithSubstitutions, missingWithoutSubstitute } from '../utils/ingredientSubstitution.ts';
-import { SubstitutionHint, SubstitutionAiPanel } from './SubstitutionHint.tsx';
+import { matchWithSubstitutions } from '../utils/ingredientSubstitution.ts';
+import { SubstitutionHint } from './SubstitutionHint.tsx';
 import { INITIAL_RECIPES, COMMON_PANTRY_INGREDIENTS } from '../data/recipesData.ts';
 import { FERMENTATION_GUIDES } from '../data/fermentationData.ts';
 import {
@@ -902,7 +902,6 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                     const totalMins =
                       result.recipe.prepTimeMinutes + result.recipe.cookTimeMinutes;
                     const substitution = matchWithSubstitutions(result, selectedIngredients);
-                    const aiMissing = missingWithoutSubstitute(result.missingIngredients, selectedIngredients);
                     return (
                       <article
                         key={result.recipe.id}
@@ -977,14 +976,6 @@ export const CociflexWorkspace: React.FC<CociflexWorkspaceProps> = ({
                                     {result.matchPercentage}%)
                                   </p>
                                 </div>
-                              )}
-
-                              {substitution.suggestions.length === 0 && aiMissing.length > 0 && (
-                                <SubstitutionAiPanel
-                                  recipeTitle={result.recipe.title}
-                                  missing={aiMissing}
-                                  pantry={selectedIngredients}
-                                />
                               )}
                             </div>
                           )}

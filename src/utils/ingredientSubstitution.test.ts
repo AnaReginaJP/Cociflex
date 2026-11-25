@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import type { Recipe, RecipeIngredient } from './recipeMatcher.ts';
 import { calculateRecipeMatch } from './recipeMatcher.ts';
 import {
+  buildSubstitutionContext,
   findSubstituteEntry,
   findSubstitutions,
+  isTrivialIngredient,
   matchWithSubstitutions,
   missingWithoutSubstitute,
   substitutionAmount,
@@ -12,11 +14,15 @@ import {
 
 // Recetas minimas con los mismos ingredientes del catalogo: las pruebas no dependen de
 // las imagenes ni de los datos de la app, solo de los nombres y cantidades reales.
-function makeRecipe(ingredients: RecipeIngredient[], title = 'Receta de prueba'): Recipe {
+function makeRecipe(
+  ingredients: RecipeIngredient[],
+  title = 'Receta de prueba',
+  category = 'Postres'
+): Recipe {
   return {
     id: 'prueba',
     title,
-    category: 'Postres',
+    category,
     mealType: 'Desayuno',
     description: '',
     prepTimeMinutes: 5,
@@ -194,4 +200,97 @@ test('el porcentaje nunca pasa de 100', () => {
   const result = calculateRecipeMatch(PAN_FRANCES, pantry);
   const withSubstitutions = matchWithSubstitutions(result, pantry);
   assert.ok(withSubstitutions.matchPercentage <= 100);
+});
+
+test('3 cucharadas de crema se sustituyen por 3 cucharadas de yogur, no por tazas', () => {
+  const chilaquiles = makeRecipe(
+    [
+      { name: 'Tortillas de maíz', amount: '6', unit: 'piezas', essential: true },
+      { name: 'Crema ácida', amount: '3', unit: 'cucharadas', essential: false },
+    ],
+    'Chilaquiles Rojos',
+    'Tradicional Mexicana'
+  );
+  const pantry = ['Tortillas de maíz', 'Yogur natural'];
+  const result = calculateRecipeMatch(chilaquiles, pantry);
+  const suggestion = findSubstitutions(result.missingIngredients, pantry).find(
+    (s) => s.missing === 'Crema ácida'
+  );
+  assert.ok(suggestion);
+  assert.equal(suggestion.substitute, 'Yogur natural');
+  assert.equal(suggestion.amount, '3');
+  assert.equal(suggestion.unit, 'cucharadas');
+});
+
+test('½ taza de aceite se sustituye por ½ taza, no por ½ cucharada', () => {
+  const pastel = makeRecipe(
+    [{ name: 'Aceite vegetal', amount: '0.5', unit: 'taza', essential: true }],
+    'Pastel de Zanahoria',
+    'Postres'
+  );
+  const pick = findSubstitutions(
+    [{ name: 'Aceite vegetal', amount: '0.5', unit: 'taza', essential: true }],
+    ['Mantequilla o Aceite'],
+    buildSubstitutionContext(pastel)
+  )[0];
+  assert.ok(pick);
+  assert.equal(pick.substitute, 'Mantequilla o Aceite');
+  assert.equal(pick.amount, '½');
+  assert.equal(pick.unit, 'taza');
+});
+
+test('no propone yogur para el huevo en huevos a la mexicana', () => {
+  const huevos = makeRecipe(
+    [{ name: 'Huevos', amount: '4', unit: 'piezas', essential: true }],
+    'Huevos a la Mexicana con Frijolitos',
+    'Tradicional Mexicana'
+  );
+  const context = buildSubstitutionContext(huevos);
+  const missing = [{ name: 'Huevos', amount: '4', unit: 'piezas', essential: true }];
+  assert.deepEqual(findSubstitutions(missing, ['Yogur natural'], context), []);
+  assert.deepEqual(missingWithoutSubstitute(missing, ['Yogur natural'], context), []);
+});
+
+test('tampoco propone yogur para chilaquiles con huevo', () => {
+  const chilaquiles = makeRecipe(
+    [{ name: 'Huevos', amount: '3', unit: 'piezas', essential: true }],
+    'Chilaquiles Rojos con Huevo',
+    'Tradicional Mexicana'
+  );
+  const context = buildSubstitutionContext(chilaquiles);
+  const missing = [{ name: 'Huevos', amount: '3', unit: 'piezas', essential: true }];
+  assert.deepEqual(findSubstitutions(missing, ['Yogur natural'], context), []);
+});
+
+test('sí propone yogur para el huevo en un pastel', () => {
+  const pastel = makeRecipe(
+    [{ name: 'Huevos', amount: '3', unit: 'piezas', essential: true }],
+    'Pastel de Zanahoria',
+    'Postres'
+  );
+  const context = buildSubstitutionContext(pastel);
+  const suggestion = findSubstitutions(
+    [{ name: 'Huevos', amount: '3', unit: 'piezas', essential: true }],
+    ['Yogur natural'],
+    context
+  )[0];
+  assert.ok(suggestion);
+  assert.equal(suggestion.substitute, 'Yogur natural');
+  assert.equal(suggestion.amount, '¾');
+  assert.equal(suggestion.unit, 'taza');
+});
+
+test('sal, pimienta y agua no se mandan a la IA', () => {
+  assert.equal(isTrivialIngredient('Sal y pimienta'), true);
+  assert.equal(isTrivialIngredient('Agua no clorada'), true);
+  assert.equal(isTrivialIngredient('Chile chipotle'), false);
+
+  const sinSustituto = missingWithoutSubstitute(
+    [
+      { name: 'Sal y pimienta', amount: '1', unit: 'pizca', essential: true },
+      { name: 'Chile chipotle', amount: '1', unit: 'pieza', essential: false },
+    ],
+    []
+  );
+  assert.deepEqual(sinSustituto.map((ingredient) => ingredient.name), ['Chile chipotle']);
 });

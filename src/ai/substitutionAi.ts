@@ -117,6 +117,7 @@ Reglas:
 - Indica el cambio de sabor, textura o consistencia en "note".
 - Agrega los alérgenos que aporte el sustituto (por ejemplo "lácteo" o "gluten"); si no tiene, deja la lista vacía.
 - Si no hay un sustituto adecuado en la despensa, no lo inventes: simplemente no incluyas ese faltante.
+- No propongas yogur, crema ni leche como sustituto del huevo en platillos donde el huevo es el ingrediente principal (por ejemplo huevos a la mexicana o chilaquiles con huevo).
 - Máximo 6 sugerencias. No recomiendes ingredientes fuera de la despensa.
 
 Estructura del JSON:

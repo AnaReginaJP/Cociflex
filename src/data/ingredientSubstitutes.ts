@@ -24,6 +24,8 @@ export interface SubstituteOption {
   ratio: number;
   /** Unidad en la que se expresa la cantidad del sustituto. */
   unit: string;
+  /** Unidad de la receta para la que está pensada la proporción, cuando no es convertible (p. ej. pieza → taza). */
+  fromUnit?: string;
   /** Cambio de sabor, textura o consistencia. */
   note: string;
   /** Alérgenos que aporta el sustituto. */
@@ -35,6 +37,8 @@ export interface SubstituteEntry {
   ingredient: string;
   functions: IngredientFunction[];
   substitutes: SubstituteOption[];
+  /** Solo se propone en este tipo de preparaciones. */
+  onlyFor?: 'reposteria';
   /** Cuándo no conviene sustituir y por qué. */
   avoidWhen?: string;
   /** Fuente revisada por la persona (etiqueta, libro, tabla de cocina). */
@@ -150,11 +154,13 @@ export const INGREDIENT_SUBSTITUTES: SubstituteEntry[] = [
   {
     ingredient: 'Huevos',
     functions: ['aglutinante'],
+    onlyFor: 'reposteria',
     substitutes: [
       {
         name: 'Yogur natural',
         ratio: 0.25,
         unit: 'taza',
+        fromUnit: 'pieza',
         note: 'Solo para repostería: aporta humedad y liga la masa, aunque no da la misma esponja.',
         allergens: ['lácteo'],
       },
@@ -181,6 +187,7 @@ export const INGREDIENT_SUBSTITUTES: SubstituteEntry[] = [
         name: 'Vinagre blanco',
         ratio: 1,
         unit: 'cucharada',
+        fromUnit: 'pieza',
         note: 'Da la acidez, pero el sabor es más fuerte. Empieza con la mitad y prueba.',
       },
     ],

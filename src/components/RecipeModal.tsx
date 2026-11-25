@@ -15,8 +15,8 @@ import {
 } from 'lucide-react';
 import { Recipe, scaleIngredientAmount, isIngredientMatched } from '../utils/recipeMatcher.ts';
 import { prettyAmount, type PartitionPlan } from '../utils/recipePartition.ts';
-import { findSubstitutions } from '../utils/ingredientSubstitution.ts';
-import { SubstitutionHint } from './SubstitutionHint.tsx';
+import { findSubstitutions, buildSubstitutionContext, missingWithoutSubstitute } from '../utils/ingredientSubstitution.ts';
+import { SubstitutionHint, SubstitutionAiPanel } from './SubstitutionHint.tsx';
 import { RecipePartitionPanel, type AiAdaptedSteps } from './RecipePartitionPanel.tsx';
 
 interface RecipeModalProps {
@@ -132,6 +132,13 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
       : null;
   const reducedPlan = plan && !plan.isFullRecipe ? plan : null;
   const steps = aiSteps?.steps ?? reducedPlan?.steps ?? recipe.steps;
+
+  // Sustituciones: contexto del platillo para no proponer yogur donde el huevo es el protagonista.
+  const substitutionContext = buildSubstitutionContext(recipe);
+  const missingFromPantry = recipe.ingredients.filter(
+    (ing) => !isIngredientMatched(ing.name, pantryIngredients)
+  );
+  const aiMissing = missingWithoutSubstitute(missingFromPantry, pantryIngredients, substitutionContext);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
@@ -329,7 +336,7 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                 const inShopping = shoppingList.includes(ing.name);
                 const suggestion = isIngredientMatched(ing.name, pantryIngredients)
                   ? undefined
-                  : findSubstitutions([ing], pantryIngredients)[0];
+                  : findSubstitutions([ing], pantryIngredients, substitutionContext)[0];
 
                 return (
                   <div
@@ -394,6 +401,16 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({
                 );
               })}
             </div>
+
+            {pantryIngredients.length > 0 && aiMissing.length > 0 && (
+              <div className="pt-2">
+                <SubstitutionAiPanel
+                  recipeTitle={recipe.title}
+                  missing={aiMissing}
+                  pantry={pantryIngredients}
+                />
+              </div>
+            )}
           </div>
 
           {/* Procedure Steps */}
