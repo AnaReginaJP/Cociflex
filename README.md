@@ -42,6 +42,15 @@ Las fechas las escribe la persona (la app no inventa días de caducidad) y se gu
 
 `POST /api/generate-recipe` llama desde el servidor a un modelo local compatible con la API de OpenAI (Ollama o LM Studio), configurado con `LLM_BASE_URL` y `LLM_MODEL`. La respuesta se pide en JSON con una estructura fija (título, ingredientes, pasos con tiempos, consejo de aprovechamiento y calorías aproximadas). Atiende una receta a la vez (`LLM_MAX_CONCURRENT`) con una cola corta (`LLM_MAX_QUEUE`) y avisa si está ocupada. Si `LLM_BASE_URL` no está configurado, devuelve una receta de respaldo.
 
+### Sustitución inteligente de ingredientes
+
+Cuando a una receta le falta un ingrediente, la app busca un sustituto que el usuario ya tenga en su despensa y le dice cómo usarlo. Aparece en **Mi Cocina**, debajo de los faltantes de cada receta, y en el detalle de receta, debajo de cada ingrediente que no está en la despensa.
+
+- La base de equivalencias (`src/data/ingredientSubstitutes.ts`) describe la función del ingrediente en el platillo (líquido, grasa, aglutinante, leudante, acidez, dulzor, sabor) y sus sustitutos con proporción, nota de sabor y alérgenos. Las proporciones son aproximadas y las revisa el equipo.
+- El motor (`src/utils/ingredientSubstitution.ts`, sin IA) elige el mejor sustituto que la persona **sí tiene**, convierte la unidad de la receta a la del sustituto y ajusta la cantidad como medida de cocina (`3 cucharadas`, `½ taza`, `90 g`, `1½ cucharadas`). El huevo solo se sustituye por yogur en pasteles, panes y masas.
+- El porcentaje de coincidencia se recalcula sin tocar `recipeMatcher.ts`: solo cuenta como cubierto el faltante que tiene sustituto disponible.
+- En el detalle de la receta, si la base no cubre un caso, el botón **Buscar más opciones con IA** consulta `POST /api/ai/sustitutos` (no aparece para sal, pimienta ni agua). El servidor descarta cualquier propuesta que no esté en la despensa y, si la IA no responde, se queda lo de la base.
+
 ### Receta a tu medida (cuando no te alcanza un ingrediente)
 
 Si tienes un ingrediente pero no la cantidad completa (por ejemplo, la receta rinde 5 hotcakes y solo te alcanza la harina para 3), el apartado **"¿No te alcanza algún ingrediente?"** del detalle de la receta calcula la versión reducida:

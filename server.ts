@@ -18,6 +18,7 @@ import {
 } from './src/auth/localAuth.ts';
 import { getLlmConfig, generateRecipe, LlmError, type RecipeRequest } from './src/ai/localLlm.ts';
 import { createLimiter, BusyError } from './src/ai/limiter.ts';
+import { parseSubstitutionRequest, requestSubstitutions } from './src/ai/substitutionAi.ts';
 import { adaptStepsWithLocalAi, parsePartitionStepsRequest } from './src/ai/partitionAi.ts';
 import {
   getUserFullState,
@@ -446,6 +447,60 @@ app.post('/api/generate-recipe', optionalAuth, async (req: AuthRequest, res: Res
         error instanceof LlmError ? error.message : 'Error desconocido al generar la receta.';
       console.error('Error generating recipe with the local model:', error);
       record('error', null, message);
+      res.end(JSON.stringify({ error: message }));
+    }
+  } finally {
+    clearInterval(keepAlive);
+    release();
+  }
+});
+
+// "Sustitución inteligente": optional AI help for missing ingredients that the base does not
+// cover. The server re-checks the answer against the pantry before returning it.
+app.post('/api/ai/sustitutos', async (req: Request, res: Response) => {
+  const parsed = parseSubstitutionRequest(req.body);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+  const llm = getLlmConfig();
+  if (!llm) {
+    return res.status(503).json({ error: 'La IA local no está configurada en el servidor.' });
+  }
+
+  const clientAbort = new AbortController();
+  res.on('close', () => {
+    if (!res.writableEnded) clientAbort.abort();
+  });
+
+  let release: () => void;
+  try {
+    release = await llmLimiter.acquire(clientAbort.signal);
+  } catch (error) {
+    if (error instanceof BusyError) {
+      return res.status(429).json({
+        error: 'La IA local está ocupada con otras recetas. Intenta de nuevo en unos minutos.',
+      });
+    }
+    return; // client left while waiting
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+  const keepAlive = setInterval(() => res.write(' '), KEEPALIVE_MS);
+
+  try {
+    const suggestions = await requestSubstitutions(llm, parsed.value, clientAbort.signal);
+    res.end(JSON.stringify({ suggestions, model: llm.model }));
+  } catch (error) {
+    if (error instanceof LlmError && error.code === 'aborted') {
+      res.end();
+    } else {
+      const message =
+        error instanceof LlmError ? error.message : 'Error desconocido al buscar sustituciones.';
+      console.error('Error finding substitutions with the local model:', error);
       res.end(JSON.stringify({ error: message }));
     }
   } finally {
