@@ -177,6 +177,22 @@ export function displayAmount(value: number, unit: string): string {
   return formatKitchenNumber(rounded > 0 ? rounded : value);
 }
 
+// Pieces, cloves or slices are bought whole: the shopping list rounds them up (4⅓ cloves → 5).
+const BOUGHT_WHOLE_UNITS = ['pieza', 'diente', 'rebanada', 'ramita', 'pastilla'];
+
+/** Quantity for the shopping list. Units bought whole are rounded up, keeping the amount used. */
+export function shoppingQuantity(total: number, unit: string): string {
+  const exact = displayAmount(total, unit);
+  if (!BOUGHT_WHOLE_UNITS.includes(unit)) {
+    const label = unitLabel(unit, total);
+    return `${exact}${label ? ` ${label}` : ''}`;
+  }
+  const kitchen = roundToKitchenFraction(total, 'nearest');
+  const toBuy = Math.max(1, Math.ceil((kitchen > 0 ? kitchen : total) - 1e-9));
+  const label = unitLabel(unit, toBuy);
+  return exact === String(toBuy) ? `${toBuy} ${label}` : `${toBuy} ${label} (usas ${exact})`;
+}
+
 function scaleRecipe(recipe: Recipe, personas: number): PlannedIngredient[] {
   const factor = recipe.servings > 0 ? personas / recipe.servings : 1;
   return recipe.ingredients.map((ing) => {
@@ -250,10 +266,7 @@ export function buildShoppingList(days: PlannedDay[]): ShoppingLine[] {
 
   return Array.from(groups.values())
     .map((group) => {
-      const parts = Array.from(group.totals.entries()).map(([unit, total]) => {
-        const label = unitLabel(unit, total);
-        return `${displayAmount(total, unit)}${label ? ` ${label}` : ''}`;
-      });
+      const parts = Array.from(group.totals.entries()).map(([unit, total]) => shoppingQuantity(total, unit));
       if (group.withoutAmount) parts.push('al gusto');
       return {
         name: group.name,
